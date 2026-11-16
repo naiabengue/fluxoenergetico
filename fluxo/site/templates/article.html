@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ a.title }} | {{ site.title }}{% endblock %}
+{% block description %}{{ a.lead }}{% endblock %}
+{% block head %}
+<meta property="og:type" content="article">
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "NewsArticle", "headline": a.title, "description": a.lead, "datePublished": a.datetime or a.date, "inLanguage": "pt-PT", "mainEntityOfPage": a.abs_url, "articleSection": a.category_name, "isBasedOn": a.sources|map(attribute='url')|list, "publisher": {"@type": "Organization", "name": site.title}}|tojson(indent=1) }}</script>
+{% endblock %}
+{% block content %}
+<article class="article">
+  <header>
+    <p class="entry-meta"><a href="{{ prefix }}/categoria/{{ a.category }}/">{{ a.category_name }}</a> <time datetime="{{ a.date }}">{{ a.date|data }}</time></p>
+    <h1 class="article-title">{{ a.title }}</h1>
+    <p class="article-lead">{{ a.lead }}</p>
+  </header>
+  {% if a.ai_note %}<p class="notice notice-ai">{{ a.ai_note }} Os números foram verificados automaticamente contra a fonte.</p>{% endif %}
+  {% if a.type == 'dados' %}<p class="notice notice-data">Peça gerada automaticamente a partir de dados oficiais, sem inteligência artificial. Cada valor vem da fonte indicada no fim.</p>{% endif %}
+  {% if a.key_points %}<section class="keypoints" aria-label="Pontos-chave"><h2>Em resumo</h2><ul>{% for k in a.key_points %}<li>{{ k }}</li>{% endfor %}</ul></section>{% endif %}
+  {% if a.chart %}<figure class="chart"><img src="{{ prefix }}/{{ a.chart }}" alt="Gráfico: {{ a.title }}" loading="lazy"></figure>{% endif %}
+  <div class="prose">{{ a.html|safe }}</div>
+  <section class="sources"><h2>Fontes</h2><ul>{% for s in a.sources %}<li><a href="{{ s.url }}" rel="noopener">{{ s.name }}</a>{% if s.date %}, publicado em {{ s.date|data }}{% endif %}</li>{% endfor %}</ul>
+  <p class="small">Encontrou um erro? Escreva para {{ site.owner.email }} indicando o endereço desta página.</p></section>
+</article>
+{% endblock %}

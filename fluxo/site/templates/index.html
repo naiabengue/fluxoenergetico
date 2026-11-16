@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="visually-hidden">{{ site.title }}: últimos artigos</h1>
+{% if articles %}{% include "_list.html" %}{% else %}<p class="empty">Ainda não há artigos publicados. O primeiro sai após a próxima recolha diária.</p>{% endif %}
+<p class="more"><a href="{{ prefix }}/arquivo/">Ver todos os artigos no arquivo</a></p>
+{% endblock %}

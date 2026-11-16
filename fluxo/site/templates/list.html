@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | {{ site.title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ title }}</h1>
+{% if articles %}{% include "_list.html" %}{% else %}<p class="empty">{{ empty }}</p>{% endif %}
+{% endblock %}

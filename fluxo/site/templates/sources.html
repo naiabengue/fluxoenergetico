@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Fontes | {{ site.title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Fontes</h1>
+<p>Os artigos partem de um conjunto fixo de {{ bee|length }} fontes institucionais, estatísticas e setoriais, mais {{ extra|length }} fontes de dados. Cada artigo liga à publicação original.</p>
+<div class="table-wrap"><table class="sources-table">
+<thead><tr><th scope="col">Fonte</th><th scope="col">Instituição</th><th scope="col">Acompanhamento</th><th scope="col">Condições de reutilização</th></tr></thead>
+<tbody>
+{% for s in bee + extra %}<tr><td><a href="{{ s.url }}" rel="noopener">{{ s.name }}</a></td><td>{{ s.institution }}</td><td>{% if s.method == 'rss' %}Automático (feed){% elif s.method == 'html' %}Automático (página){% elif s.method == 'api' %}Dados (API){% elif s.method == 'tool' %}Ferramenta interna{% else %}Consulta manual{% endif %}</td><td>{{ s.licence }}</td></tr>
+{% endfor %}</tbody></table></div>
+{% endblock %}

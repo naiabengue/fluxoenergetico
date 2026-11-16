@@ -1,0 +1,9 @@
+<ol class="list">
+{% for a in articles %}
+  <li class="entry">
+    <p class="entry-meta"><a href="{{ prefix }}/categoria/{{ a.category }}/">{{ a.category_name }}</a> <time datetime="{{ a.date }}">{{ a.date|data }}</time>{% if a.type == 'dados' %} <span class="kind">Dados</span>{% endif %}</p>
+    <h2 class="entry-title"><a href="{{ a.url }}">{{ a.title }}</a></h2>
+    <p class="entry-lead">{{ a.lead }}</p>
+  </li>
+{% endfor %}
+</ol>

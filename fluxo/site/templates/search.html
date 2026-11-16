@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Pesquisar | {{ site.title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Pesquisar</h1>
+<form class="search" role="search" onsubmit="return false">
+  <label for="q">Palavras a procurar nos títulos e resumos</label>
+  <input id="q" type="search" autocomplete="off" placeholder="Ex.: gás natural, tarifas, Brent">
+</form>
+<ol id="results" class="list" aria-live="polite"></ol>
+<script src="{{ prefix }}/static/search.js" data-index="{{ prefix }}/search.json" defer></script>
+{% endblock %}

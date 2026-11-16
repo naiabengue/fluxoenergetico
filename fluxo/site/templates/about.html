@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Sobre | {{ site.title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Sobre o Fluxo Energético</h1>
+<div class="prose">
+<p>O Fluxo Energético publica notícias, indicadores e análises sobre energia em Portugal e na União Europeia: petróleo e combustíveis, eletricidade e gás, renováveis e transição, regulação e política energética.</p>
+<h2>Estatuto editorial</h2>
+<ul>
+<li>Escrevemos a partir de fontes primárias (reguladores, institutos de estatística, organismos internacionais e associações setoriais) e ligamos sempre ao documento original.</li>
+<li>Distinguimos factos de interpretação. Não publicamos previsões apresentadas como certezas.</li>
+<li>Preferimos não publicar a publicar com dúvidas: um artigo que falhe a verificação não sai.</li>
+<li>Corrigimos erros de forma visível, no próprio artigo.</li>
+</ul>
+<h2>Como trabalhamos</h2>
+<p>Um sistema automático consulta as fontes todos os dias, elimina repetições e classifica cada novidade pela relevância energética, credibilidade da fonte, atualidade, ligação a Portugal e à UE e verificabilidade. Sem fonte verificável, nada é publicado.</p>
+<p>As peças de dados (por exemplo, reservas de gás ou Brent e câmbio) são geradas por regras a partir dos dados oficiais, sem inteligência artificial.</p>
+<h2>Inteligência artificial</h2>
+<p>Algumas notícias são redigidas com apoio de inteligência artificial a partir do texto da fonte. Esses artigos estão identificados com a nota: «{{ policy.ai_label }}» Quando passam por revisão humana antes da publicação, a nota diz: «{{ policy.ai_label_reviewed }}» Todos os números são verificados automaticamente contra a fonte e nenhum excerto longo é copiado.</p>
+<h2>Responsável</h2>
+<p>{{ site.owner.name }}<br>{{ site.owner.address }}<br>{{ site.owner.email }}</p>
+</div>
+{% endblock %}

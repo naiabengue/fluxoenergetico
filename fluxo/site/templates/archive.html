@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Arquivo | {{ site.title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Arquivo</h1>
+{% for month, items in months.items() %}
+<section class="month"><h2>{{ month }}</h2>
+<ul class="archive">{% for a in items %}<li><time datetime="{{ a.date }}">{{ a.date|data }}</time> <a href="{{ a.url }}">{{ a.title }}</a></li>{% endfor %}</ul></section>
+{% else %}<p class="empty">O arquivo começa com o primeiro artigo publicado.</p>{% endfor %}
+{% endblock %}

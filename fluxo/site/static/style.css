@@ -1,0 +1,91 @@
+/* Fluxo Energético — tinta azul-petróleo, painel cinza-verde, uma linha âmbar de "fluxo". */
+:root {
+  --ink: #10324a;        /* títulos */
+  --text: #24323d;       /* corpo */
+  --muted: #5a6872;
+  --panel: #eef3f1;      /* caixas de resumo */
+  --line: #d5dfdb;
+  --link: #1f6f63;       /* verde-rede */
+  --amber: #e2a01c;      /* linha de fluxo, usada só como sinal */
+  --amber-soft: #fff5dc;
+  --serif: "Iowan Old Style", "Charter", "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --measure: 40rem;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; color: var(--text); background: #fff; font: 1.0625rem/1.6 var(--sans); }
+a { color: var(--link); text-underline-offset: .18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 1rem; top: 1rem; background: #fff; padding: .5rem; z-index: 9; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Cabeçalho: marca + linha de fluxo */
+.masthead { padding-top: 1.75rem; }
+.masthead-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; }
+.wordmark { font: 600 1.85rem/1.1 var(--serif); color: var(--ink); text-decoration: none; letter-spacing: -.01em; }
+.tagline { margin: 0; color: var(--muted); font-size: .95rem; }
+.nav { display: flex; flex-wrap: wrap; gap: .25rem 1.1rem; margin-top: .9rem; font-size: .92rem; }
+.nav a { color: var(--ink); text-decoration: none; padding: .2rem 0; }
+.nav a:hover { color: var(--link); text-decoration: underline; }
+.flow { height: 3px; margin-top: 1rem;
+  background: linear-gradient(90deg, var(--ink) 0 18%, var(--amber) 18% 100%); }
+
+main { padding-top: 1.5rem; padding-bottom: 3rem; }
+.page-title { font: 600 2rem/1.15 var(--serif); color: var(--ink); margin: .5rem 0 1.25rem; }
+
+/* Listas de artigos */
+.list { list-style: none; margin: 0; padding: 0; }
+.entry { padding: 1.25rem 0; border-bottom: 1px solid var(--line); }
+.entry-meta { margin: 0 0 .3rem; font-size: .88rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .2rem .8rem; }
+.entry-meta a { color: var(--link); text-decoration: none; font-weight: 600; }
+.kind { color: var(--ink); background: var(--amber-soft); padding: 0 .4rem; border-radius: 3px; }
+.entry-title { font: 600 1.45rem/1.25 var(--serif); margin: 0 0 .35rem; }
+.entry-title a { color: var(--ink); text-decoration: none; }
+.entry-title a:hover { text-decoration: underline; }
+.entry-lead { margin: 0; max-width: var(--measure); }
+.more { margin-top: 1.5rem; }
+.empty { color: var(--muted); padding: 2rem 0; }
+
+/* Artigo */
+.article-title { font: 600 clamp(1.75rem, 4.5vw, 2.5rem)/1.15 var(--serif); color: var(--ink); margin: .25rem 0 .75rem; letter-spacing: -.01em; }
+.article-lead { font-size: 1.2rem; line-height: 1.5; color: var(--ink); max-width: var(--measure); margin: 0 0 1.25rem; }
+.notice { font-size: .9rem; padding: .7rem .9rem; margin: 0 0 1.25rem; border-radius: 4px; max-width: var(--measure); }
+.notice-ai { background: var(--amber-soft); border-left: 3px solid var(--amber); }
+.notice-data { background: var(--panel); border-left: 3px solid var(--link); }
+.keypoints { background: var(--panel); border-left: 3px solid var(--amber); padding: .9rem 1.1rem .4rem; margin: 0 0 1.75rem; max-width: var(--measure); }
+.keypoints h2 { font: 600 1rem/1.3 var(--sans); color: var(--ink); margin: 0 0 .4rem; }
+.keypoints ul { margin: 0 0 .6rem; padding-left: 1.1rem; font-variant-numeric: tabular-nums; }
+.chart { margin: 0 0 1.75rem; }
+.chart img { width: 100%; height: auto; border: 1px solid var(--line); }
+.prose { max-width: var(--measure); }
+.prose h2 { font: 600 1.3rem/1.3 var(--serif); color: var(--ink); margin: 2rem 0 .5rem; }
+.prose p, .prose li { font-variant-numeric: lining-nums; }
+.sources { margin-top: 2.5rem; padding-top: 1rem; border-top: 3px solid var(--ink); max-width: var(--measure); }
+.sources h2 { font: 600 1.1rem/1.3 var(--sans); color: var(--ink); margin: 0 0 .5rem; }
+.small { font-size: .85rem; color: var(--muted); }
+
+/* Arquivo, pesquisa, fontes */
+.month h2 { font: 600 1.15rem/1.3 var(--sans); color: var(--ink); margin: 1.5rem 0 .5rem; }
+.archive { list-style: none; padding: 0; margin: 0; }
+.archive li { padding: .35rem 0; display: grid; grid-template-columns: 11rem 1fr; gap: 1rem; }
+.archive time { color: var(--muted); font-size: .9rem; }
+.search label { display: block; font-weight: 600; color: var(--ink); margin-bottom: .4rem; }
+.search input { width: 100%; font: inherit; padding: .6rem .75rem; border: 2px solid var(--line); border-radius: 4px; }
+.search input:focus { border-color: var(--link); outline: none; }
+.table-wrap { overflow-x: auto; }
+.sources-table { border-collapse: collapse; font-size: .9rem; width: 100%; }
+.sources-table th, .sources-table td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.sources-table th { color: var(--ink); }
+
+.footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; font-size: .92rem; }
+.footer a { margin-right: 1rem; }
+
+@media (max-width: 34rem) {
+  .archive li { grid-template-columns: 1fr; gap: 0; }
+  .wordmark { font-size: 1.6rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
