@@ -34,7 +34,7 @@ a:hover { text-decoration-thickness: 2px; }
 .flow { height: 3px; margin-top: 1rem;
   background: linear-gradient(90deg, var(--ink) 0 18%, var(--amber) 18% 100%); }
 
-main { padding-top: 1.5rem; padding-bottom: 3rem; }
+main.wrap { padding-top: 1.75rem; padding-bottom: 3rem; }
 .page-title { font: 600 2rem/1.15 var(--serif); color: var(--ink); margin: .5rem 0 1.25rem; }
 
 /* Listas de artigos */

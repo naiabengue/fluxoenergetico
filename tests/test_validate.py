@@ -135,3 +135,11 @@ def test_brent_fx_piece_validates(project, fixtures):
     assert "63,42" in draft.title
     v = validate(draft, evidence, cfg.editorial, published=[])
     assert v.ok, v.errors
+
+
+def test_source_label_does_not_repeat_institution():
+    from fluxo.write.news import source_label
+    erse = Source(id="erse", name="ERSE — comunicados", institution="ERSE", url="u", method="html")
+    iea = Source(id="iea", name="International Energy Agency — notícias", institution="AIE / IEA", url="u", method="html")
+    assert source_label(erse) == "ERSE — comunicados"
+    assert source_label(iea) == "AIE / IEA — International Energy Agency — notícias"

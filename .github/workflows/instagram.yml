@@ -1,0 +1,80 @@
+# Terça e sexta: prepara o carrossel do melhor artigo da semana; publica pela API se estiver ativa.
+name: Instagram
+on:
+  schedule:
+    - cron: "41 9 * * 2,5"
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.prep.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - id: prep
+        run: |
+          python -m fluxo instagram | tee out.txt
+          if grep -q "Carrossel preparado" out.txt; then echo "ready=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Guardar imagens
+        run: |
+          git config user.name "fluxo-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/instagram data/state
+          git diff --cached --quiet || git commit -m "instagram: $(date -u +%F)"
+          git push
+      - uses: actions/upload-artifact@v4
+        if: steps.prep.outputs.ready == 'true'
+        with:
+          name: carrossel-instagram
+          path: content/instagram
+  publicar-site:
+    needs: preparar
+    if: needs.preparar.outputs.ready == 'true'
+    uses: ./.github/workflows/publicar.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+  publicar-instagram:
+    needs: publicar-site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Publicar (só se instagram.auto_publish = true e houver credenciais)
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: python -m fluxo instagram-publish | tee out.txt
+      - name: Guardar estado
+        run: |
+          git config user.name "fluxo-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/state
+          git diff --cached --quiet || git commit -m "instagram publicado: $(date -u +%F)"
+          git push
+      - name: Pedir publicação manual quando a API não está ativa
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if grep -q "publicar manualmente" out.txt; then
+            gh issue create --title "Carrossel pronto para o Instagram ($(date -u +%F))" \
+              --body "As imagens e a legenda estão em content/instagram/ e no artefacto 'carrossel-instagram' da execução ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Agendar no Meta Business Suite (ver docs/MANUAL.md, secção Instagram)."
+          fi

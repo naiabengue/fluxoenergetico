@@ -40,6 +40,12 @@ Produz um JSON com estas chaves:
 - "suitable": false se a fonte não tiver informação suficiente para um artigo rigoroso, senão true."""
 
 
+def source_label(source: Source) -> str:
+    if source.name.lower().startswith(source.institution.lower()):
+        return source.name
+    return f"{source.institution} — {source.name}"
+
+
 def draft_news(item: dict[str, Any], source: Source, source_text: str, editorial: dict[str, Any],
                env: Mapping[str, str] | None = None, post: Callable = requests.post) -> Draft | None:
     prompt = PROMPT.format(institution=source.institution, source_name=source.name, url=item["url"],
@@ -55,7 +61,7 @@ def draft_news(item: dict[str, Any], source: Source, source_text: str, editorial
                  body=str(data["body_markdown"]).strip(), category=str(data["category"]).strip(),
                  key_points=[str(k).strip() for k in data["key_points"]][:5],
                  tags=[str(t).strip().lower() for t in data.get("tags", [])][:5],
-                 sources=[{"name": f"{source.institution} — {source.name}", "url": item["url"],
+                 sources=[{"name": source_label(source), "url": item["url"],
                            "date": (item.get("published") or "")[:10]}],
                  facts=[{"claim": str(f.get("claim", "")), "evidence": str(f.get("evidence", ""))}
                         for f in data["facts"] if isinstance(f, dict)],

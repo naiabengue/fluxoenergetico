@@ -1,0 +1,156 @@
+"""Execução diária: recolher → peças de dados → selecionar → redigir → validar → publicar ou enviar para revisão."""
+from __future__ import annotations
+
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Mapping
+
+import requests
+
+from . import llm
+from .charts import line_chart
+from .collect.runner import collect_all
+from .config import Config
+from .datasets.agsi import fetch_agsi
+from .datasets.ecb import fetch_usd
+from .datasets.eia import fetch_brent
+from .dedup import cluster
+from .extract import extract_text
+from .publish import decide, slugify, write_article
+from .scoring import score
+from .store import Store
+from .validate import validate
+from .write.data_pieces import brent_fx_piece, gas_storage_piece
+from .write.news import draft_news
+
+MIN_SOURCE_CHARS = 600
+
+
+def _due_pieces(cfg: Config, now: datetime) -> list[str]:
+    return [name for name, p in cfg.editorial.get("data_pieces", {}).items() if p.get("weekday") == now.weekday()]
+
+
+def _build_piece(name: str, cfg: Config, fetcher, env: Mapping[str, str], now: datetime):
+    if name == "brent_fx":
+        if not env.get("EIA_API_KEY"):
+            return None, "falta EIA_API_KEY"
+        brent, fx = fetch_brent(fetcher, env["EIA_API_KEY"]), fetch_usd(fetcher)
+        if len(brent) < 3 or len(fx) < 3:
+            return None, "dados insuficientes (EIA/BCE)"
+        draft, evidence = brent_fx_piece(brent, fx)
+        series = {"Brent (USD/barril)": [(o.date, o.value) for o in brent]}
+        return (draft, evidence, series, "USD por barril", 2, "EIA"), None
+    if name == "gas_storage":
+        if not env.get("AGSI_API_KEY"):
+            return None, "falta AGSI_API_KEY"
+        key = env["AGSI_API_KEY"]
+        eu, pt = fetch_agsi(fetcher, key, "eu", today=now.date()), fetch_agsi(fetcher, key, "PT", today=now.date())
+        if len(eu) < 2 or len(pt) < 2:
+            return None, "dados insuficientes (AGSI)"
+        es = fetch_agsi(fetcher, key, "ES", today=now.date()) if "ES" in cfg.editorial["data_pieces"]["gas_storage"].get("countries", []) else []
+        draft, evidence = gas_storage_piece(eu, pt, es or None)
+        series = {"UE": [(s.date, s.full) for s in eu], "Portugal": [(s.date, s.full) for s in pt]}
+        return (draft, evidence, series, "% da capacidade", 1, "GIE AGSI+"), None
+    return None, f"peça desconhecida: {name}"
+
+
+def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], drafts_dir: Path,
+              post: Callable = requests.post, data_pieces: list[str] | str = "auto") -> dict[str, Any]:
+    ed = cfg.editorial
+    store = Store(cfg.root)
+    llm.USAGE.update({"calls": 0, "ok": 0, "failed": 0, "by_provider": {}})
+    summary: dict[str, Any] = {"started": now.isoformat(), "published": [], "review": [], "rejected": [],
+                               "data_pieces": {}, "news": {}, "errors": []}
+
+    # 1. Recolha
+    summary["collect"] = collect_all(cfg, store, fetcher, now)
+    published = store.published_articles()
+
+    # 2. Peças de dados (sem IA)
+    for name in (_due_pieces(cfg, now) if data_pieces == "auto" else data_pieces):
+        built, reason = _build_piece(name, cfg, fetcher, env, now)
+        if not built:
+            summary["data_pieces"][name] = reason
+            continue
+        draft, evidence, series, ylabel, dec, src = built
+        draft.slug = slugify(draft.title)
+        rel = f"media/{now:%Y%m%d}-{name}.png"
+        line_chart(series, cfg.root / "content" / rel, ylabel, dec, src)
+        draft.chart = rel
+        v = validate(draft, evidence, ed, published, today=now.date())
+        decision = decide(draft, v, "candidato", ed)
+        summary["data_pieces"][name] = decision
+        if decision == "publicar":
+            write_article(draft, cfg.root, now)
+            summary["published"].append({"kind": "dados", "title": draft.title})
+        elif decision == "rever":
+            write_article(draft, drafts_dir, now)
+            summary["review"].append({"kind": "dados", "title": draft.title})
+        else:
+            summary["rejected"].append({"kind": "dados", "title": draft.title, "errors": v.errors})
+            store.log_rejected({"date": now.isoformat(), "kind": "dados", "title": draft.title, "errors": v.errors})
+
+    # 3. Notícias (IA opcional)
+    processed = store.processed()
+    scored = []
+    for it in store.recent_items(days=3, now=now):
+        if it.id in processed:
+            continue
+        try:
+            src = cfg.source(it.source_id)
+        except KeyError:
+            continue
+        sc = score(it, src, ed, now)
+        if sc.decision != "rejeitar":
+            scored.append((sc, it, src))
+    scored.sort(key=lambda t: t[0].total, reverse=True)
+    groups = cluster(scored, ed["scoring"]["cluster_similarity"], key=lambda t: t[1].title)
+    candidates = [g[0] for g in groups]   # o mais pontuado de cada acontecimento
+    summary["news"] = {"candidates": len(candidates), "attempted": 0, "skipped": None}
+    has_llm = any(env.get(p.get("key_env", "")) for p in ed["llm"]["providers"])
+    if not has_llm:
+        summary["news"]["skipped"] = "sem IA configurada"
+        candidates = []
+
+    produced = 0
+    for sc, it, src in candidates:
+        if produced >= ed["policy"]["max_news_per_day"] or llm.USAGE["calls"] >= ed["llm"]["max_calls_per_run"]:
+            break
+        summary["news"]["attempted"] += 1
+        resp = fetcher.get(it.url)
+        text = extract_text(resp) if resp else ""
+        if len(text) < MIN_SOURCE_CHARS:
+            store.mark_processed(it.id, "rejeitado: fonte inacessível ou curta", now.isoformat())
+            summary["rejected"].append({"kind": "noticia", "title": it.title, "errors": ["texto da fonte indisponível"]})
+            continue
+        draft = draft_news(it.to_dict(), src, text, ed, env=env, post=post)
+        if draft is None:
+            summary["errors"].append(f"IA sem resposta utilizável para: {it.title}")
+            break   # quota ou falha do fornecedor: tenta-se no dia seguinte
+        draft.score = sc.total
+        draft.slug = slugify(draft.title)
+        v = validate(draft, text, ed, published, today=now.date())
+        decision = decide(draft, v, sc.decision, ed)
+        store.mark_processed(it.id, decision, now.isoformat())
+        if decision == "publicar":
+            draft.ai["review"] = "auto"
+            write_article(draft, cfg.root, now)
+            summary["published"].append({"kind": "noticia", "title": draft.title})
+            produced += 1
+        elif decision == "rever":
+            draft.ai["review"] = "pr"
+            write_article(draft, drafts_dir, now)
+            summary["review"].append({"kind": "noticia", "title": draft.title, "source": it.url, "score": sc.total})
+            produced += 1
+        else:
+            summary["rejected"].append({"kind": "noticia", "title": draft.title, "errors": v.errors})
+            store.log_rejected({"date": now.isoformat(), "kind": "noticia", "title": draft.title,
+                                "source": it.url, "errors": v.errors})
+
+    summary["llm"] = dict(llm.USAGE)
+    store.log_run({k: summary[k] for k in ("started", "published", "review", "rejected", "data_pieces", "news",
+                                           "llm", "errors")} |
+                  {"collect": {k: summary["collect"][k] for k in ("new", "dup", "ok", "failed")},
+                   "failed_sources": [s for s, r in summary["collect"]["sources"].items() if r["status"] == "erro"],
+                   "http_requests": getattr(fetcher, "requests", None)})
+    return summary

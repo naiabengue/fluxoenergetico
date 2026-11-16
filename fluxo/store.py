@@ -92,6 +92,37 @@ class Store:
                     out.append(it)
         return out
 
+    # ---- itens já tratados (não voltam a ser redigidos) ---------------------
+    def _state(self, name: str) -> dict[str, Any]:
+        path = self.data / "state" / f"{name}.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+    def _save_state(self, name: str, data: dict[str, Any]) -> None:
+        path = self.data / "state" / f"{name}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+
+    def processed(self) -> dict[str, Any]:
+        return self._state("processed")
+
+    def mark_processed(self, item_id: str, decision: str, when: str) -> None:
+        data = self.processed()
+        data[item_id] = {"decision": decision, "date": when[:10]}
+        self._save_state("processed", data)
+
+    def instagram_state(self) -> dict[str, Any]:
+        return self._state("instagram")
+
+    def save_instagram_state(self, data: dict[str, Any]) -> None:
+        self._save_state("instagram", data)
+
+    def log_rejected(self, record: dict[str, Any]) -> None:
+        month = str(record.get("date", datetime.now(timezone.utc).isoformat()))[:7]
+        path = self.data / "rejected" / f"{month}.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+
     # ---- registo de execuções --------------------------------------------
     def log_run(self, record: dict[str, Any]) -> None:
         month = str(record.get("started", datetime.now(timezone.utc).isoformat()))[:7]

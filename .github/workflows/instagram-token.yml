@@ -1,0 +1,27 @@
+# Dia 1 de cada mês: renova o token do Instagram (válido 60 dias). Requer o segredo GH_PAT (ver docs/MANUAL.md).
+name: Renovar token do Instagram
+on:
+  schedule:
+    - cron: "29 3 1 * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  renovar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$IG_ACCESS_TOKEN" ] || [ -z "$GH_TOKEN" ]; then echo "Sem IG_ACCESS_TOKEN ou GH_PAT: nada a fazer."; exit 0; fi
+          mkdir -p out
+          python -m fluxo refresh-ig-token --out out/ig_token
+          gh secret set IG_ACCESS_TOKEN --repo "${{ github.repository }}" < out/ig_token
+          rm -f out/ig_token
