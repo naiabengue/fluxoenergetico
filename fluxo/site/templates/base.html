@@ -35,7 +35,8 @@
 <footer class="footer">
   <div class="wrap">
     <p><a href="{{ prefix }}/sobre/">Sobre e estatuto editorial</a> <a href="{{ prefix }}/fontes/">Fontes</a> <a href="{{ prefix }}/arquivo/">Arquivo</a> <a href="{{ prefix }}/privacidade/">Privacidade</a> <a href="{{ base }}/feed.xml">RSS</a>{% if site.instagram %} <a href="https://www.instagram.com/{{ site.instagram }}/">Instagram</a>{% endif %}</p>
-    <p class="small">Responsável: {{ site.owner.name }}. Contacto: {{ site.owner.email }}. Os textos citam e ligam sempre às fontes originais.</p>
+    <p class="small">Responsável: {{ site.owner.name }}. Contacto: <a href="mailto:{{ site.owner.email }}">{{ site.owner.email }}</a>. Os textos citam e ligam sempre às fontes originais.</p>
+    {% if site.disclaimer %}<p class="small">{{ site.disclaimer }}</p>{% endif %}
   </div>
 </footer>
 </body>

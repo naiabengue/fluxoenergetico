@@ -9,6 +9,11 @@ import requests
 GRAPH = "https://graph.instagram.com"
 
 
+def slide_urls(base: str, folder: str, n: int) -> list[str]:
+    """URLs públicos das imagens do carrossel, servidas pelo site (content/instagram → <base>/instagram)."""
+    return [f"{base.rstrip('/')}/{folder.strip('/')}/slide-{i}.jpg" for i in range(1, n + 1)]
+
+
 def publish_enabled(editorial: dict[str, Any], env: Mapping[str, str]) -> bool:
     return bool(editorial["instagram"].get("auto_publish") and env.get("IG_ACCESS_TOKEN") and env.get("IG_USER_ID"))
 

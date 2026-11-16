@@ -1,6 +1,7 @@
 """Pontuação editorial (0–100) com condições de bloqueio que nenhuma pontuação compensa."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -29,6 +30,12 @@ def _hits(text: str, keywords: list[str]) -> int:
     return sum(1 for k in keywords if strip_accents(k.lower()) in text)
 
 
+def excluded(text: str, keywords: list[str]) -> bool:
+    """Palavra ou expressão inteira (sem acentos, minúsculas): «ENSE» não apanha «licensed»."""
+    norm = strip_accents(text.lower())
+    return any(re.search(rf"\b{re.escape(strip_accents(k.lower()))}\b", norm) for k in keywords)
+
+
 def categorise(text: str, editorial: dict[str, Any]) -> tuple[str | None, int]:
     best, best_hits = None, 0
     for cid, cat in editorial["categories"].items():
@@ -49,6 +56,8 @@ def score(item: Item, source: Source, editorial: dict[str, Any], now: datetime) 
         blocked.append("título insuficiente")
     if not source.enabled or source.method in {"tool", "manual"}:
         blocked.append("fonte não elegível")
+    if excluded(f"{item.title} {item.summary}", editorial.get("excluded_keywords", [])):
+        blocked.append("tema excluído")
 
     category, hits = categorise(text, editorial)
     energia = w["energia"] if hits >= 2 else (w["energia"] * 2 / 3 if hits == 1 else 0)

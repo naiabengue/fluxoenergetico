@@ -16,7 +16,8 @@
 <p>As peças de dados (por exemplo, reservas de gás ou Brent e câmbio) são geradas por regras a partir dos dados oficiais, sem inteligência artificial.</p>
 <h2>Inteligência artificial</h2>
 <p>Algumas notícias são redigidas com apoio de inteligência artificial a partir do texto da fonte. Esses artigos estão identificados com a nota: «{{ policy.ai_label }}» Quando passam por revisão humana antes da publicação, a nota diz: «{{ policy.ai_label_reviewed }}» Todos os números são verificados automaticamente contra a fonte e nenhum excerto longo é copiado.</p>
-<h2>Responsável</h2>
-<p>{{ site.owner.name }}<br>{{ site.owner.address }}<br>{{ site.owner.email }}</p>
+<h2>Responsável e independência</h2>
+<p>{{ site.owner.name }}<br>{{ site.owner.address }}<br><a href="mailto:{{ site.owner.email }}">{{ site.owner.email }}</a></p>
+{% if site.disclaimer %}<p>{{ site.disclaimer }}</p>{% endif %}
 </div>
 {% endblock %}

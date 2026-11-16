@@ -25,7 +25,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python -m fluxo build --out _site
+      # O repositório é servido em /fluxoenergetico; o site vive em /fluxoenergetico/news (ver config/site.yaml).
+      - run: python -m fluxo build --out _site --subdir news
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

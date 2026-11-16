@@ -80,3 +80,14 @@ def test_publish_carousel_calls_api_in_order():
     assert [c[2].get("is_carousel_item") for c in calls[:2]] == ["true", "true"]
     assert calls[2][2]["media_type"] == "CAROUSEL" and calls[2][2]["children"] == "c1,c2"
     assert calls[-1][1] == "media_publish"
+
+
+def test_slide_urls_follow_public_base(project):
+    from fluxo.instagram.publish import slide_urls
+    from fluxo.site.build import public_base
+
+    base = public_base(load_config(project).site)
+    assert base == "https://naiabengue.com/fluxoenergetico/news"
+    urls = slide_urls(base, "instagram/2026-11-17/armazenamento-gas", 3)
+    assert urls == [f"https://naiabengue.com/fluxoenergetico/news/instagram/2026-11-17/armazenamento-gas/slide-{i}.jpg"
+                    for i in (1, 2, 3)]

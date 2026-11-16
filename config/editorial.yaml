@@ -24,8 +24,11 @@ categories:
 core_categories: [combustiveis-petroleo, eletricidade-gas, renovaveis-transicao, regulacao-politica]
 non_core_penalty: 10
 
+# Temas que nunca entram na recolha editorial (bloqueio; comparação por palavra inteira, sem acentos).
+excluded_keywords: ["ENSE", "Entidade Nacional para o Setor Energético", "Entidade Nacional para o Sector Energético"]
+
 geo:
-  pt_keywords: [portugal, portuguesa, português, portugues, lisboa, porto, sines, madeira, açores, acores, erse, dgeg, ense, ren , galp, edp, mibel, ibéric, iberian]
+  pt_keywords: [portugal, portuguesa, português, portugues, lisboa, porto, sines, madeira, açores, acores, erse, dgeg, ren , galp, edp, mibel, ibéric, iberian]
   eu_keywords: [união europeia, uniao europeia, european union, ue , eu , euro area, área do euro, area do euro, eurozone, comissão europeia, european commission, eurostat, estados-membros, member states, europe, europa]
 
 scoring:

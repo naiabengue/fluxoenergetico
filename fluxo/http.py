@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-USER_AGENT = "FluxoEnergeticoBot/0.1 (+https://github.com/fluxoenergetico; recolha de fontes públicas)"
+USER_AGENT = "FluxoEnergeticoBot/0.1 (+https://naiabengue.com/fluxoenergetico/news/sobre/; recolha de fontes públicas)"
 
 
 @dataclass

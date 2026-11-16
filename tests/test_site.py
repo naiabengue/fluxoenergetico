@@ -96,7 +96,7 @@ def test_article_has_jsonld_and_canonical(project):
     _, out = _build(project)
     page = next(out.glob("artigos/2026/11/tarifas-*/index.html")).read_text()
     assert '"@type": "NewsArticle"' in page
-    assert 'rel="canonical" href="https://fluxoenergetico.github.io/artigos/2026/11/tarifas-' in page
+    assert 'rel="canonical" href="https://naiabengue.com/fluxoenergetico/news/artigos/2026/11/tarifas-' in page
 
 
 def test_cname_written_when_domain_set(project):
@@ -110,3 +110,67 @@ def test_public_sources_page_hides_internal_tools(project):
     _, out = _build(project)
     page = (out / "fontes" / "index.html").read_text()
     assert "ERSE" in page and "ME-QR" not in page and "Issuu" not in page
+
+
+def _internal_links(html):
+    import re
+    return re.findall(r'(?:href|src)="(/[^"]*)"', html)
+
+
+def test_all_internal_links_use_news_prefix_and_no_cname(project):
+    _, out = _build(project)
+    assert not (out / "CNAME").exists()
+    pages = list(out.rglob("*.html"))
+    assert pages
+    for page in pages:
+        for link in _internal_links(page.read_text()):
+            assert link.startswith("/fluxoenergetico/news/"), (page, link)
+    search = json.loads((out / "search.json").read_text())
+    assert all(s["u"].startswith("/fluxoenergetico/news/artigos/") for s in search)
+    assert "https://naiabengue.com/fluxoenergetico/news/sobre/" in (out / "sitemap.xml").read_text()
+
+
+def test_build_with_subdir_writes_root_redirect(project):
+    from fluxo.site.build import build_with_subdir
+
+    write_article(_news(), project, WHEN)
+    cfg = load_config(project)
+    report = build_with_subdir(cfg, project / "_site", "news")
+    root = project / "_site"
+    assert report["articles"] == 1
+    assert (root / "news" / "index.html").exists()
+    redirect = (root / "index.html").read_text()
+    assert 'http-equiv="refresh" content="0; url=/fluxoenergetico/news/"' in redirect
+    assert 'rel="canonical" href="https://naiabengue.com/fluxoenergetico/news/"' in redirect
+    assert 'href="/fluxoenergetico/news/"' in redirect
+    assert (root / "404.html").read_text() == (root / "news" / "404.html").read_text()
+    assert (root / ".nojekyll").exists() and not (root / "CNAME").exists()
+
+
+def test_build_with_subdir_rejects_mismatched_base_url(project):
+    import pytest
+    from fluxo.site.build import build_with_subdir
+
+    with pytest.raises(ValueError):
+        build_with_subdir(load_config(project), project / "_site", "noticias")
+
+
+def test_owner_and_personal_site_disclaimer(project):
+    _, out = _build(project)
+    about = (out / "sobre" / "index.html").read_text()
+    index = (out / "index.html").read_text()
+    assert "Pedro Camilo Ramos" in about and "Lisboa" in about and "pedrocamiloramos@gmail.com" in about
+    for page in (about, index):
+        assert "não representam a entidade empregadora" in page
+    for page in out.rglob("*.html"):
+        text = page.read_text()
+        assert "ENSE" not in text and "Entidade Nacional para o Setor" not in text
+
+
+def test_cli_build_subdir(project):
+    from fluxo.cli import main
+
+    write_article(_news(), project, WHEN)
+    assert main(["build", "--root", str(project), "--out", str(project / "_site"), "--subdir", "news"]) == 0
+    assert (project / "_site" / "news" / "sobre" / "index.html").exists()
+    assert "url=/fluxoenergetico/news/" in (project / "_site" / "index.html").read_text()

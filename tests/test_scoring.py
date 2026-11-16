@@ -59,3 +59,18 @@ def test_inferred_date_reduces_verifiability_and_old_items_lose_freshness(projec
                     published="2026-10-01T10:00:00+00:00"), src, cfg.editorial, NOW)
     assert fresh.parts["verificabilidade"] == 5
     assert old.parts["novidade"] == 0
+
+
+def test_excluded_keywords_block_items(project):
+    cfg = load_config(project)
+    ed = cfg.editorial
+    assert "ENSE" in ed["excluded_keywords"]
+    src = cfg.source("dgeg-destaques")
+    hit = score(_it("dgeg-destaques", "ENSE publica preços médios dos combustíveis em Portugal"), src, ed, NOW)
+    assert "tema excluído" in hit.blocked and hit.decision == "rejeitar"
+    full = score(_it("dgeg-destaques", "Relatório da Entidade Nacional para o Setor Energético sobre combustíveis"),
+                 src, ed, NOW)
+    assert "tema excluído" in full.blocked
+    # «ense» dentro de outra palavra não bloqueia
+    ok = score(_it("dgeg-destaques", "Licenses for intense expense in fuel supply in Portugal"), src, ed, NOW)
+    assert "tema excluído" not in ok.blocked

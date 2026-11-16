@@ -38,11 +38,16 @@ def cmd_daily(args) -> int:
 
 
 def cmd_build(args) -> int:
-    from .site.build import build_site
+    from .site.build import build_site, build_with_subdir
 
     cfg = load_config(args.root)
-    report = build_site(cfg, Path(args.out))
-    print(f"Site gerado em {args.out}: {report['articles']} artigos, {report['pages']} páginas ({report['base']})")
+    if args.subdir:
+        report = build_with_subdir(cfg, Path(args.out), args.subdir)
+        where = f"{args.out}/{args.subdir.strip('/')} (com redirecionamento na raiz)"
+    else:
+        report = build_site(cfg, Path(args.out))
+        where = args.out
+    print(f"Site gerado em {where}: {report['articles']} artigos, {report['pages']} páginas ({report['base']})")
     return 0
 
 
@@ -66,13 +71,14 @@ def cmd_instagram(args) -> int:
     from .instagram.caption import make_caption
     from .instagram.render import render_carousel
     from .instagram.select import pick_for_week
+    from .site.build import public_base
     from .store import Store
 
     cfg = load_config(args.root)
     store = Store(cfg.root)
     state = store.instagram_state()
     ig = cfg.editorial["instagram"]
-    base = f"https://{cfg.site['domain']}" if cfg.site.get("domain") else cfg.site["base_url"].rstrip("/")
+    base = public_base(cfg.site)
     label = base.replace("https://", "")
     picks = pick_for_week(store.published_articles(), _now(), n=1, already_posted=set(state))
     if not picks:
@@ -90,7 +96,8 @@ def cmd_instagram(args) -> int:
 
 
 def cmd_instagram_publish(args) -> int:
-    from .instagram.publish import publish_carousel, publish_enabled
+    from .instagram.publish import publish_carousel, publish_enabled, slide_urls
+    from .site.build import public_base
     from .store import Store
 
     cfg = load_config(args.root)
@@ -99,11 +106,11 @@ def cmd_instagram_publish(args) -> int:
         return 0
     store = Store(cfg.root)
     state = store.instagram_state()
-    base = f"https://{cfg.site['domain']}" if cfg.site.get("domain") else cfg.site["base_url"].rstrip("/")
+    base = public_base(cfg.site)
     for slug, info in state.items():
         if info.get("media_id"):
             continue
-        urls = [f"{base}/{info['folder']}/slide-{i}.jpg" for i in range(1, info["slides"] + 1)]
+        urls = slide_urls(base, info["folder"], info["slides"])
         for _ in range(20):   # espera que o GitHub Pages sirva as imagens
             if requests.head(urls[0], timeout=20).status_code == 200:
                 break
@@ -160,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--data", default="", help="forçar peças: brent_fx,gas_storage")
     b = add("build", cmd_build, "gerar o site estático")
     b.add_argument("--out", default="_site")
+    b.add_argument("--subdir", default="", help="gerar em <out>/<subdir> com redirecionamento na raiz (ex.: news)")
     add("audit", cmd_audit, "testar todas as fontes")
     add("instagram", cmd_instagram, "preparar o carrossel da semana")
     add("instagram-publish", cmd_instagram_publish, "publicar carrosséis preparados (se ativo)")

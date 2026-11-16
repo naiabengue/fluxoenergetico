@@ -41,15 +41,55 @@ def _write(out: Path, rel: str, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def public_base(site: dict[str, Any]) -> str:
+    """Endereço público do site, sem barra final."""
+    return f"https://{site['domain']}" if site.get("domain") else site["base_url"].rstrip("/")
+
+
+REDIRECT = """<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<meta http-equiv="refresh" content="0; url={target}">
+<link rel="canonical" href="{canonical}">
+<meta name="robots" content="noindex">
+</head>
+<body>
+<p><a href="{target}">{title}</a></p>
+</body>
+</html>
+"""
+
+
+def build_with_subdir(cfg: Config, out: Path, subdir: str) -> dict[str, Any]:
+    """Gera o site em out/<subdir> e põe na raiz um redirecionamento para lá.
+
+    Serve para um repositório de projeto do GitHub Pages (ex.: /fluxoenergetico) cujo site vive numa
+    subpasta (ex.: /fluxoenergetico/news). O base_url tem de terminar nessa subpasta.
+    """
+    out = Path(out)
+    subdir = subdir.strip("/")
+    base = public_base(cfg.site)
+    prefix = urlsplit(base).path.rstrip("/")
+    if not subdir or not prefix.endswith("/" + subdir):
+        raise ValueError(f"base_url ({base}) não termina em /{subdir}")
+    if out.exists():
+        shutil.rmtree(out)
+    report = build_site(cfg, out / subdir)
+    _write(out, "index.html", REDIRECT.format(title=cfg.site["title"], target=f"{prefix}/", canonical=f"{base}/"))
+    shutil.copyfile(out / subdir / "404.html", out / "404.html")
+    _write(out, ".nojekyll", "")
+    return report
+
+
 def build_site(cfg: Config, out: Path) -> dict[str, Any]:
     out = Path(out)
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
     site = dict(cfg.site)
-    base = site["base_url"].rstrip("/")
-    if site.get("domain"):
-        base = f"https://{site['domain']}"
+    base = public_base(site)
     prefix = urlsplit(base).path.rstrip("/")
     cats = cfg.editorial["categories"]
     policy = cfg.editorial["policy"]
