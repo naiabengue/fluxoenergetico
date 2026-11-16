@@ -89,7 +89,7 @@ def build_site(cfg: Config, out: Path) -> dict[str, Any]:
         months.setdefault(f"{MESES[d.month - 1].capitalize()} de {d.year}", []).append(a)
     page("archive.html", "arquivo/index.html", months=months, canonical=f"{base}/arquivo/")
     page("search.html", "pesquisa/index.html", canonical=f"{base}/pesquisa/")
-    bee = [s for s in cfg.sources if s.bee_number is not None]
+    bee = [s for s in cfg.sources if s.bee_number is not None and s.group != "ferramenta"]
     extra = [s for s in cfg.sources if s.extra]
     page("sources.html", "fontes/index.html", bee=bee, extra=extra, canonical=f"{base}/fontes/")
     page("about.html", "sobre/index.html", policy=policy, canonical=f"{base}/sobre/")

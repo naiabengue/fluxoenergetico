@@ -104,3 +104,9 @@ def test_cname_written_when_domain_set(project):
     cfg.site["domain"] = "fluxoenergetico.pt"
     build_site(cfg, project / "_site")
     assert (project / "_site" / "CNAME").read_text().strip() == "fluxoenergetico.pt"
+
+
+def test_public_sources_page_hides_internal_tools(project):
+    _, out = _build(project)
+    page = (out / "fontes" / "index.html").read_text()
+    assert "ERSE" in page and "ME-QR" not in page and "Issuu" not in page
