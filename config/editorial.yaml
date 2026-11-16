@@ -100,3 +100,19 @@ instagram:
   auto_publish: false           # true só depois de configurar a API (ver docs/MANUAL.md)
   api_version: v24.0
   hashtags: ["#energia", "#portugal", "#mercadosenergeticos", "#transicaoenergetica", "#combustiveis", "#eletricidade"]
+  # Estilo «misto»: capa com gancho, miolo sóbrio, apelo final. Emojis só na legenda (no máximo 3).
+  hook_emoji:
+    combustiveis-petroleo: "⛽"
+    eletricidade-gas: "⚡"
+    renovaveis-transicao: "🌱"
+    regulacao-politica: "📜"
+    dados-indicadores: "📊"
+    economia-investimento: "💶"
+  cta_emoji: "💬"
+  link_emoji: "🔗"
+  cta_caption: "Guarda esta publicação para consultar mais tarde e diz-nos nos comentários o que pensas."
+  cta_slide: "Guarda e partilha"
+  cover_hint: "Desliza para ver os números →"
+  # Capa com imagem gerada por IA (Cloudflare Workers AI, plano gratuito). Só funciona com CF_ACCOUNT_ID e
+  # CF_API_TOKEN nos segredos; sem eles, ou se o pedido falhar, usa a capa tipográfica.
+  ai_cover: true

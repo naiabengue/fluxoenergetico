@@ -69,6 +69,7 @@ def _article_for_ig(cfg, a):
 
 def cmd_instagram(args) -> int:
     from .instagram.caption import make_caption
+    from .instagram.cover_image import cover_enabled, generate_cover
     from .instagram.render import render_carousel
     from .instagram.select import pick_for_week
     from .site.build import public_base
@@ -86,12 +87,16 @@ def cmd_instagram(args) -> int:
         return 0
     a = _article_for_ig(cfg, picks[0])
     folder = f"instagram/{_now():%Y-%m-%d}/{a['slug']}"
-    paths = render_carousel(a, cfg.root / "content" / folder, ig.get("max_slides", 7), label)
-    caption = make_caption(a, base, ig["hashtags"])
+    cover = generate_cover(a, os.environ) if cover_enabled(cfg.editorial, os.environ) else None
+    paths = render_carousel(a, cfg.root / "content" / folder, ig.get("max_slides", 7), label,
+                            cover_image=cover, style=ig)
+    caption = make_caption(a, base, ig["hashtags"], style=ig, ai_cover=cover is not None)
     (cfg.root / "content" / folder / "legenda.txt").write_text(caption, encoding="utf-8")
-    state[a["slug"]] = {"prepared": _now().isoformat(), "folder": folder, "slides": len(paths), "media_id": None}
+    state[a["slug"]] = {"prepared": _now().isoformat(), "folder": folder, "slides": len(paths), "media_id": None,
+                        "ai_cover": cover is not None}
     store.save_instagram_state(state)
-    print(f"Carrossel preparado: content/{folder} ({len(paths)} imagens)")
+    capa = "capa com imagem IA" if cover is not None else "capa tipográfica"
+    print(f"Carrossel preparado: content/{folder} ({len(paths)} imagens, {capa})")
     return 0
 
 

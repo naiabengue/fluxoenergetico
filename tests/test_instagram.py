@@ -91,3 +91,37 @@ def test_slide_urls_follow_public_base(project):
     urls = slide_urls(base, "instagram/2026-11-17/armazenamento-gas", 3)
     assert urls == [f"https://naiabengue.com/fluxoenergetico/news/instagram/2026-11-17/armazenamento-gas/slide-{i}.jpg"
                     for i in (1, 2, 3)]
+
+
+def _emojis(text):
+    return [c for c in text if ord(c) >= 0x1F000 or 0x2600 <= ord(c) <= 0x27BF]
+
+
+def test_caption_mixed_style(project):
+    ig = load_config(project).editorial["instagram"]
+    cap = make_caption(dict(ART, lead="y" * 3000), "https://naiabengue.com/fluxoenergetico/news", ig["hashtags"],
+                       style=ig)
+    lines = cap.split("\n")
+    assert lines[0].endswith(ART["title"]) and len(_emojis(lines[0])) <= 1
+    assert 1 <= len(_emojis(cap)) <= 3
+    assert sum(1 for l in lines if l.startswith("• ")) == 4
+    assert ig["cta_caption"] in cap
+    assert cap.index(ig["cta_caption"]) < cap.index("Fonte:")
+    assert "naiabengue.com/fluxoenergetico/news (ligação na bio)" in cap
+    assert len(cap) <= 2200 and sum(1 for w in cap.split() if w.startswith("#")) <= 8
+
+
+def test_caption_mentions_ai_cover(project):
+    ig = load_config(project).editorial["instagram"]
+    cap = make_caption(ART, "https://x.pt", ig["hashtags"], style=ig, ai_cover=True)
+    assert "Imagem de capa gerada por IA" in cap
+
+
+def test_closing_slide_has_cta_above_link_and_no_emoji(project):
+    from fluxo.instagram.render import closing_lines
+
+    ig = load_config(project).editorial["instagram"]
+    texts = [t for _, t in closing_lines(ART, "naiabengue.com/fluxoenergetico/news", ig["cta_slide"])]
+    assert texts[0] == ig["cta_slide"]
+    assert any("naiabengue.com/fluxoenergetico/news" in t for t in texts[1:])
+    assert not _emojis(" ".join(texts))

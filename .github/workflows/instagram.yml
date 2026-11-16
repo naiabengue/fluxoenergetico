@@ -23,6 +23,10 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - id: prep
+        env:
+          # Opcional: capa com imagem IA (Cloudflare Workers AI, plano gratuito). Sem estes segredos, capa tipográfica.
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
           python -m fluxo instagram | tee out.txt
           if grep -q "Carrossel preparado" out.txt; then echo "ready=true" >> "$GITHUB_OUTPUT"; fi

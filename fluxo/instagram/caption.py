@@ -1,3 +1,4 @@
+"""Legenda do Instagram no estilo «misto»: gancho, pontos-chave, apelo, fontes, ligação, hashtags."""
 from __future__ import annotations
 
 from typing import Any
@@ -5,16 +6,29 @@ from typing import Any
 LIMIT = 2200
 
 
-def make_caption(article: dict[str, Any], site_base: str, hashtags: list[str]) -> str:
+def make_caption(article: dict[str, Any], site_base: str, hashtags: list[str],
+                 style: dict[str, Any] | None = None, ai_cover: bool = False) -> str:
+    style = style or {}
     domain = site_base.replace("https://", "").replace("http://", "").rstrip("/")
+    emoji = (style.get("hook_emoji") or {}).get(article.get("category"), "")
+    # O gancho é o próprio título (nunca reescrito: não se inventam factos), com um emoji opcional.
+    head = f"{emoji} {article['title']}".strip() + "\n\n"
     points = "\n".join(f"• {k}" for k in article.get("key_points", [])[:4])
     sources = ", ".join(s["name"] for s in article.get("sources", []))
-    tail = [f"Fonte: {sources}." if sources else "",
-            "Texto com apoio de inteligência artificial, verificado contra a fonte." if (article.get("ai") or {}).get("used") else "",
-            f"Artigo completo em {domain} (ligação na bio).",
+    cta = style.get("cta_caption", "")
+    notes = []
+    if (article.get("ai") or {}).get("used"):
+        notes.append("Texto com apoio de inteligência artificial, verificado contra a fonte.")
+    elif article.get("type") == "dados":
+        notes.append("Peça gerada a partir de dados oficiais.")
+    if ai_cover:
+        notes.append("Imagem de capa gerada por IA.")
+    link = f"{style.get('link_emoji', '')} Artigo completo em {domain} (ligação na bio).".strip()
+    tail = [f"{style.get('cta_emoji', '')} {cta}".strip() if cta else "",
+            "\n".join(x for x in [f"Fonte: {sources}." if sources else "", *notes] if x),
+            link,
             " ".join(hashtags[:8])]
     tail_text = "\n\n".join(t for t in tail if t)
-    head = f"{article['title']}\n\n"
     room = LIMIT - len(head) - len(points) - len(tail_text) - 6
     lead = article.get("lead", "")
     if len(lead) > room:
