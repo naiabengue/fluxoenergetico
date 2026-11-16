@@ -1,0 +1,640 @@
+# Inventário de fontes do Fluxo Energético.
+# - bee: número do favorito na pasta BEE (1–41). Fontes adicionais têm bee: null e extra: true.
+# - method: rss | html | json | api | manual | tool
+# - tier: pontos de credibilidade (0–25) usados na pontuação editorial.
+# - verified: o que foi confirmado em 16/11/2026 (leitura da página/feed). "não" = validar com `python -m fluxo audit`.
+# - link_pattern (html): expressão regular que os URLs dos artigos têm de cumprir.
+# - date_in_url: true quando a data vem no próprio URL (/2026/11/12/).
+
+defaults:
+  lang: en
+  enabled: true
+  tier: 15
+
+sources:
+  # ---------------- BEE → Economia ----------------
+  - id: gee-indicadores
+    bee: 1
+    name: Indicadores Diários — GEE
+    institution: GEE (Ministério da Economia)
+    url: https://gee.gov.pt/pt/indicadores-diarios/indicadores-diarios-gee?view=articles&category_id=23&menu_id=1494&article_id=17764
+    group: economica
+    method: manual
+    enabled: false
+    tier: 20
+    lang: pt
+    frequency: diária
+    licence: não indicada
+    verified: "robots.txt bloqueia acesso automático (16/11/2026)"
+    notes: Consulta manual. Brent e câmbio obtêm-se automaticamente via EIA e BCE (fontes adicionais).
+
+  - id: eurostat-news
+    bee: 2
+    name: Eurostat (notícias — energia e ambiente)
+    institution: Eurostat
+    url: https://ec.europa.eu/eurostat
+    group: primaria
+    method: rss
+    feeds:
+      - https://ec.europa.eu/eurostat/en/search?p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_state=maximized&p_p_mode=view&p_p_resource_id=atom&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ENVENE&_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_EURNEW
+      - https://ec.europa.eu/eurostat/en/search?p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_state=maximized&p_p_mode=view&p_p_resource_id=atom&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ENVENE&_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL
+    tier: 25
+    frequency: diária
+    licence: CC BY 4.0 (exceto dados de terceiros e logótipos)
+    verified: "feeds Atom listados em /web/rss/about-rss"
+
+  - id: eurostat-se
+    bee: 3
+    name: Eurostat — Statistics Explained (novos e atualizados)
+    institution: Eurostat
+    url: https://ec.europa.eu/eurostat/statistics-explained/index.php?title=New_and_updated_articles
+    group: primaria
+    method: html
+    link_pattern: 'statistics-explained/index\.php\?title=(?!New_and_updated|Special:|Main_Page)[A-Za-z0-9_%(),-]+$'
+    tier: 25
+    frequency: diária
+    licence: CC BY 4.0
+    verified: "página lista artigos por data (16/10/2026: Electricity and heat statistics)"
+
+  - id: ine-destaques
+    bee: 4
+    name: INE — Destaques
+    institution: Instituto Nacional de Estatística
+    url: https://www.ine.pt/xportal/xmain?xpgid=ine_main&xpid=INE&xlang=pt
+    group: primaria
+    method: rss
+    feeds:
+      - https://www.ine.pt/ine/rssfeed_dst.jsp?lang=PT
+    tier: 25
+    lang: pt
+    frequency: diária (dias úteis)
+    licence: "© INE; reutilização com citação da fonte"
+    verified: "RSS de Destaques e Publicações, JSON e calendário ICS listados em 'Recursos'"
+    notes: API de dados disponível (xpgid=ine_api_v2) para peças de dados futuras.
+
+  - id: oecd-news
+    bee: 5
+    name: OECD Newsroom
+    institution: OCDE
+    url: https://www.oecd.org/en/about/newsroom.html
+    group: economica
+    method: html
+    link_pattern: '/en/(about/news/press-releases|data/insights/statistical-releases)/20\d\d/\d\d/[a-z0-9-]+\.html$'
+    tier: 20
+    frequency: diária
+    licence: CC BY 4.0 (conteúdo desde 01/07/2024); comunicados reproduzíveis com citação
+    verified: "padrão de URL dos 'statistical releases' visto; o dos comunicados não"
+
+  - id: ecb-wp
+    bee: 6
+    name: BCE — Working Papers
+    institution: Banco Central Europeu
+    url: https://www.ecb.europa.eu/press/research-publications/working-papers/html/index.pt.html
+    group: economica
+    method: rss
+    feeds:
+      - https://www.ecb.europa.eu/rss/wppub.html
+    tier: 18
+    frequency: semanal
+    licence: reutilização permitida com indicação da fonte
+    verified: "feed listado na página oficial de RSS do BCE"
+
+  - id: eib-press
+    bee: 7
+    name: European Investment Bank — comunicados
+    institution: Banco Europeu de Investimento
+    url: https://www.eib.org/en/index.htm
+    group: economica
+    method: html
+    link_pattern: '/en/press/all/20\d\d-\d+-[a-z0-9-]+'
+    tier: 20
+    frequency: diária
+    licence: "© BEI; termos em /en/terms-of-use.htm"
+    verified: "padrão /en/press/all/2026-351-… visto; existe índice RSS em /rss/index.htm"
+
+  - id: worldbank-data
+    bee: 8
+    name: World Bank Open Data
+    institution: Banco Mundial
+    url: https://data.worldbank.org/
+    group: economica
+    method: api
+    enabled: false
+    tier: 20
+    frequency: irregular
+    licence: termos próprios para datasets
+    verified: "API v2 (api.worldbank.org/v2) sem chave"
+    notes: Fonte de contexto para análises; não gera notícias.
+
+  - id: imf-news
+    bee: 9
+    name: FMI — notícias
+    institution: Fundo Monetário Internacional
+    url: https://www.imf.org/en/Home
+    group: economica
+    method: html
+    listing_url: https://www.imf.org/en/news
+    link_pattern: '/en/news/articles/20\d\d/\d\d/\d\d/[a-z0-9-]+'
+    date_in_url: true
+    tier: 18
+    frequency: diária
+    licence: "© FMI"
+    verified: "padrão /en/news/articles/2026/10/01/… visto; versão JSON em /en/news/index.json"
+
+  - id: worldbank-okr
+    bee: 10
+    name: Banco Mundial — Open Knowledge Repository
+    institution: Banco Mundial
+    url: https://openknowledge.worldbank.org/home
+    group: economica
+    method: manual
+    enabled: false
+    tier: 18
+    frequency: irregular
+    licence: maioritariamente CC BY 3.0 IGO (confirmar por documento)
+    verified: "sem RSS/API visíveis na página inicial"
+
+  - id: bportugal-bce-pubs
+    bee: 11
+    name: Banco de Portugal — publicações do BCE
+    institution: Banco de Portugal
+    url: https://www.bportugal.pt/page/listagem-de-publicacoes-do-banco-central-europeu
+    group: economica
+    method: manual
+    enabled: false
+    tier: 20
+    lang: pt
+    frequency: mensal
+    licence: não verificada
+    verified: "não (página recusou leitura automática)"
+    notes: Traduções de publicações do BCE, já cobertas pelo feed do BCE.
+
+  - id: eib-economics
+    bee: 12
+    name: EIB — Economic Analysis
+    institution: Banco Europeu de Investimento
+    url: https://www.eib.org/en/publications-research/economics/research/index.htm
+    group: economica
+    method: manual
+    enabled: false
+    tier: 18
+    frequency: mensal
+    licence: "© BEI"
+    verified: "subconjunto da fonte 13"
+    duplicate_of: eib-publications
+
+  - id: eib-publications
+    bee: 13
+    name: EIB — Publications
+    institution: Banco Europeu de Investimento
+    url: https://www.eib.org/en/publications/index.htm
+    group: economica
+    method: html
+    link_pattern: '/en/publications/\d{8}-[a-z0-9-]+'
+    tier: 18
+    frequency: semanal
+    licence: "© BEI"
+    verified: "padrão /en/publications/20260100-… visto"
+
+  - id: oecd-reports
+    bee: 14
+    name: OECD — Reports and Research Papers
+    institution: OCDE
+    url: https://www.oecd.org/en/publications/reports.html?orderBy=mostRelevant&page=0
+    group: economica
+    method: html
+    link_pattern: '/en/publications/(reports/)?20\d\d/\d\d/[a-z0-9-]+\.html$'
+    tier: 20
+    frequency: semanal
+    licence: CC BY 4.0 (desde 01/07/2024)
+    verified: "não (padrão provável; validar com audit)"
+
+  # ---------------- BEE → Economia → Energia ----------------
+  - id: iea-news
+    bee: 15
+    name: International Energy Agency — notícias
+    institution: AIE / IEA
+    url: https://www.iea.org/
+    group: primaria
+    method: html
+    listing_url: https://www.iea.org/news
+    link_pattern: '^https://www\.iea\.org/news/[a-z0-9-]+$'
+    tier: 25
+    frequency: 2–3 por semana
+    licence: "CC BY 4.0 para a maior parte do conteúdo; NÃO para o Oil Market Report nem datasets"
+    verified: "sem RSS próprio; listagem /news com datas; termos em /terms"
+
+  - id: eurostat-data-updates
+    bee: 16
+    name: Eurostat — atualizações da base de dados (energia)
+    institution: Eurostat
+    url: https://ec.europa.eu/eurostat/data/database
+    group: primaria
+    method: rss
+    feeds:
+      - https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss
+    title_filter: '(?i)\bnrg_|energy|electricity|gas|oil|fuel'
+    tier: 25
+    frequency: diária
+    licence: CC BY 4.0
+    verified: "RSS do Catalogue API documentado"
+    notes: Filtra só datasets de energia (códigos nrg_*). Serve para alimentar peças de dados.
+
+  - id: irena
+    bee: 17
+    name: IRENA — notícias e publicações
+    institution: IRENA
+    url: https://www.irena.org/
+    group: primaria
+    method: html
+    listing_url: https://www.irena.org/News
+    link_pattern: '/News/(pressreleases|articles)/20\d\d/[A-Za-z]{3}/[A-Za-z0-9-]+'
+    tier: 22
+    frequency: semanal
+    licence: "uso livre com atribuição; T&C do site: uso não comercial (art. 4.1)"
+    verified: "não (página carrega por JavaScript; validar com audit)"
+
+  - id: erse-comunicados
+    bee: 18
+    name: ERSE — comunicados
+    institution: ERSE
+    url: https://www.erse.pt/inicio/
+    group: primaria
+    method: html
+    listing_url: https://www.erse.pt/comunicacao/comunicados/
+    link_pattern: '(/comunicacao/comunicados/[a-z0-9-]+/$|/media/[a-z0-9]+/[^/]+\.pdf$)'
+    tier: 25
+    lang: pt
+    frequency: semanal
+    licence: não indicada (textos oficiais de decisões não estão protegidos — CDADC)
+    verified: "listagem com datas dd/mm/aaaa; links para PDF ou página"
+
+  - id: dgeg-destaques
+    bee: 19
+    name: DGEG — destaques
+    institution: DGEG
+    url: https://www.dgeg.gov.pt/pt/destaques/
+    group: primaria
+    method: html
+    link_pattern: '/pt/destaques/[a-z0-9-]+/$'
+    tier: 25
+    lang: pt
+    frequency: semanal
+    licence: não indicada
+    verified: "padrão /pt/destaques/<slug>/ visto; listagem sem datas (usa-se a data da 1.ª deteção)"
+
+  - id: oecd-ilibrary-energy
+    bee: 20
+    name: OECD iLibrary — Energy
+    institution: OCDE
+    url: https://www.oecd-ilibrary.org/energy
+    group: economica
+    method: manual
+    enabled: false
+    tier: 20
+    frequency: —
+    licence: CC BY 4.0
+    verified: "conteúdo antigo (2015); iLibrary integrado em oecd.org"
+    duplicate_of: oecd-reports
+
+  - id: adene
+    bee: 21
+    name: ADENE — notícias
+    institution: ADENE
+    url: https://www.adene.pt/noticias/
+    group: setorial
+    method: rss
+    feeds:
+      - https://www.adene.pt/feed/
+    tier: 20
+    lang: pt
+    frequency: semanal
+    licence: "© ADENE"
+    verified: "RSS 2.0 válido, 10 itens, último 05/11/2026"
+
+  - id: epcol
+    bee: 22
+    name: EPCOL — notícias e informações
+    institution: EPCOL
+    url: https://www.epcol.pt/
+    group: setorial
+    method: html
+    link_pattern: '/noticias/[a-z0-9-]+/\d+$'
+    tier: 18
+    lang: pt
+    frequency: semanal
+    licence: "© EPCOL, todos os direitos reservados"
+    verified: "padrão /noticias/<slug>/<id> e datas dd/mm/aaaa vistos (15/11/2026)"
+
+  - id: observatorio-energia
+    bee: 23
+    name: Observatório da Energia — publicações
+    institution: Observatório da Energia
+    url: https://www.observatoriodaenergia.pt/pt/comunicar-energia/publicacoes
+    group: setorial
+    method: manual
+    enabled: false
+    tier: 20
+    lang: pt
+    frequency: mensal
+    licence: não verificada
+    verified: "não (página recusou leitura automática)"
+
+  - id: apren
+    bee: 24
+    name: APREN — notícias
+    institution: APREN
+    url: https://www.apren.pt/
+    group: setorial
+    method: rss
+    feeds:
+      - https://www.apren.pt/feed/
+    tier: 18
+    lang: pt
+    frequency: semanal
+    licence: "© APREN"
+    verified: "RSS 2.0 válido, 10 itens, último 12/11/2026 (descrições vazias)"
+
+  - id: oecd-data
+    bee: 25
+    name: OECD Data
+    institution: OCDE
+    url: https://data.oecd.org/
+    group: economica
+    method: api
+    enabled: false
+    tier: 20
+    frequency: —
+    licence: dados reutilizáveis para qualquer fim com citação
+    verified: "redireciona para oecd.org/en/data.html (OECD Data Explorer)"
+    duplicate_of: oecd-reports
+
+  - id: opec-orb
+    bee: 26
+    name: OPEP — cabaz de referência
+    institution: OPEP
+    url: https://www.opec.org/opec_web/en/data_graphs/40.htm
+    group: primaria
+    method: manual
+    enabled: false
+    tier: 22
+    frequency: diária
+    licence: "© OPEP"
+    verified: "URL antigo; o site da OPEP foi redesenhado"
+    notes: Para preços de crude usa-se o Brent da EIA (domínio público).
+
+  - id: ren21
+    bee: 27
+    name: REN21
+    institution: REN21
+    url: https://www.ren21.net/
+    group: setorial
+    method: rss
+    feeds:
+      - https://www.ren21.net/feed/
+    tier: 18
+    frequency: mensal
+    licence: "© REN21"
+    verified: "RSS 2.0 válido, último 03/09/2026"
+
+  - id: apenergia
+    bee: 28
+    name: Associação Portuguesa da Energia
+    institution: APE
+    url: https://apenergia.pt/noticias/
+    group: setorial
+    method: rss
+    feeds:
+      - https://apenergia.pt/feed/
+    tier: 15
+    lang: pt
+    frequency: quinzenal
+    licence: "© APE"
+    verified: "RSS 2.0 válido, último 13/11/2026"
+
+  - id: itf
+    bee: 29
+    name: International Transport Forum
+    institution: ITF (OCDE)
+    url: https://www.itf-oecd.org/
+    group: economica
+    method: manual
+    enabled: false
+    tier: 18
+    frequency: mensal
+    licence: não verificada
+    verified: "não (conteúdo truncado na leitura)"
+    notes: O favorito tinha parâmetros de rastreio (_ga); URL limpo usado.
+
+  - id: ap2h2
+    bee: 30
+    name: AP2H2 — notícias
+    institution: AP2H2
+    url: https://www.ap2h2.pt/
+    group: setorial
+    method: html
+    listing_url: https://www.ap2h2.pt/noticias.php
+    mode: pagehash
+    tier: 15
+    lang: pt
+    frequency: mensal
+    licence: "© AP2H2, todos os direitos reservados"
+    verified: "notícias sem página individual; monitoriza-se alteração da listagem"
+
+  - id: nea
+    bee: 31
+    name: OECD Nuclear Energy Agency
+    institution: NEA (OCDE)
+    url: https://www.oecd-nea.org/
+    group: primaria
+    method: manual
+    enabled: false
+    tier: 22
+    frequency: mensal
+    licence: não verificada
+    verified: "robots.txt bloqueia a listagem de notícias"
+
+  - id: gie
+    bee: 32
+    name: Gas Infrastructure Europe — comunicados
+    institution: GIE
+    url: https://www.gie.eu/
+    group: setorial
+    method: html
+    listing_url: https://www.gie.eu/press-corner/news/
+    link_pattern: '^https://www\.gie\.eu/[a-z0-9-]{15,}/$'
+    exclude_pattern: '/(press-corner|publications|about|members|events|transparency|privacy-policy|category|tag)/'
+    tier: 20
+    frequency: semanal
+    licence: não indicada
+    verified: "notícias em /<slug>/ sem datas na listagem; AGSI/ALSI com API"
+
+  - id: ambienteportugal
+    bee: 33
+    name: Plataforma Ambiente Portugal (Apemeta)
+    institution: Apemeta
+    url: https://www.ambienteportugal.pt/
+    group: setorial
+    method: html
+    link_pattern: '/news/[a-z0-9-]+$'
+    tier: 10
+    lang: pt
+    frequency: mensal
+    licence: "© Apemeta, todos os direitos reservados"
+    verified: "padrão /news/<slug> e datas aaaa-mm-dd vistos (09/11/2026)"
+
+  - id: itf-publications
+    bee: 34
+    name: ITF — Publications
+    institution: ITF (OCDE)
+    url: https://www.itf-oecd.org/search/research
+    group: economica
+    method: manual
+    enabled: false
+    tier: 18
+    frequency: mensal
+    licence: não verificada
+    verified: "o URL do favorito tem codificação duplicada (%2525255B); usar o URL limpo"
+    duplicate_of: itf
+
+  - id: liquidgaseurope
+    bee: 35
+    name: Liquid Gas Europe — publicações
+    institution: Liquid Gas Europe
+    url: https://www.liquidgaseurope.eu/publications/
+    group: setorial
+    method: html
+    link_pattern: '/resource/[a-z0-9-]+/$'
+    tier: 12
+    frequency: trimestral
+    licence: "© Liquid Gas Europe"
+    verified: "padrão /resource/<slug>/ visto; última publicação 29/04/2025"
+
+  - id: sogilub
+    bee: 36
+    name: Sogilub
+    institution: Sogilub
+    url: https://www.sogilub.pt/
+    group: setorial
+    method: manual
+    enabled: false
+    tier: 12
+    lang: pt
+    frequency: mensal
+    licence: "termos em /politica-de-privacidade/"
+    verified: "sem RSS; padrão de notícias não confirmado"
+
+  - id: eia
+    bee: 37
+    name: U.S. Energy Information Administration
+    institution: EIA
+    url: https://www.eia.gov/
+    group: primaria
+    method: rss
+    feeds:
+      - https://www.eia.gov/rss/todayinenergy.xml
+      - https://www.eia.gov/rss/press_rss.xml
+    tier: 22
+    frequency: diária
+    licence: domínio público (atribuição pedida; fotos e logótipo excluídos)
+    verified: "feeds listados em /tools/rssfeeds/"
+
+  # ---------------- BEE → … → Mensal ----------------
+  - id: me-qr
+    bee: 38
+    name: ME-QR
+    institution: ME-QR (ferramenta)
+    url: https://me-qr.com/entry
+    group: ferramenta
+    method: tool
+    enabled: false
+    tier: 0
+    frequency: —
+    licence: —
+    verified: "gerador de códigos QR com sessão; não é fonte de informação"
+
+  - id: issuu
+    bee: 39
+    name: Issuu
+    institution: Issuu (plataforma)
+    url: https://issuu.com/home/published
+    group: ferramenta
+    method: tool
+    enabled: false
+    tier: 0
+    frequency: —
+    licence: —
+    verified: "área de publicação com sessão; não é fonte de informação"
+
+  # ---------------- BEE → … → calendars ----------------
+  - id: eurostat-calendar
+    bee: 40
+    name: Eurostat — Release Calendar
+    institution: Eurostat
+    url: https://ec.europa.eu/eurostat/web/main/news/release-calendar
+    group: calendario
+    method: manual
+    enabled: false
+    tier: 25
+    frequency: diária
+    licence: CC BY 4.0
+    verified: "subscrição em /web/main/subscribe/ics.format (formato a confirmar)"
+    notes: Útil para planear peças; não gera artigos por si.
+
+  - id: opec-momr
+    bee: 41
+    name: OPEP — Monthly Oil Market Report
+    institution: OPEP
+    url: https://www.opec.org/opec_web/en/publications/338.htm
+    group: calendario
+    method: manual
+    enabled: false
+    tier: 22
+    frequency: mensal
+    licence: "© OPEP"
+    verified: "URL antigo; o MOMR continua mensal (ed. de 11/11/2026 noticiada)"
+
+  # ---------------- Fontes adicionais (não BEE) ----------------
+  - id: ecb-fx-usd
+    bee: null
+    extra: true
+    name: BCE — câmbio de referência EUR/USD
+    institution: Banco Central Europeu
+    url: https://www.ecb.europa.eu/rss/fxref-usd.html
+    group: dados
+    method: api
+    enabled: false
+    tier: 25
+    frequency: diária
+    licence: reutilização com indicação da fonte
+    verified: "feed listado na página oficial de RSS do BCE"
+    notes: Usado pela peça semanal de dados 'Brent e câmbio'.
+
+  - id: eia-brent
+    bee: null
+    extra: true
+    name: EIA — preço spot do Brent (API v2)
+    institution: EIA
+    url: https://www.eia.gov/opendata/
+    group: dados
+    method: api
+    enabled: false
+    tier: 22
+    frequency: diária
+    licence: domínio público
+    verified: "API pública; requer chave gratuita (EIA_API_KEY)"
+
+  - id: gie-agsi
+    bee: null
+    extra: true
+    name: GIE AGSI+ — armazenamento de gás (UE e Portugal)
+    institution: GIE
+    url: https://agsi.gie.eu/
+    group: dados
+    method: api
+    enabled: false
+    tier: 22
+    frequency: diária
+    licence: regras em agsi.gie.eu/data-usage (citar a fonte)
+    verified: "plataforma com API e conta; regras de citação a confirmar"
+    notes: Requer chave gratuita (AGSI_API_KEY).

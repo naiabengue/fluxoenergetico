@@ -1,0 +1,16 @@
+# Identidade e endereço do site.
+title: Fluxo Energético
+tagline: Energia, mercados e dados — Portugal e União Europeia
+description: Notícias, indicadores e análises sobre energia em Portugal e na UE, escritos a partir de fontes oficiais e com ligação a cada fonte.
+language: pt-PT
+# Endereço público. Antes de existir domínio: https://<organizacao>.github.io/<repositorio>
+base_url: https://fluxoenergetico.github.io
+# Domínio próprio (ex.: fluxoenergetico.pt). Quando preenchido, é escrito o ficheiro CNAME.
+domain: ""
+instagram: fluxoenergetico.pt
+# Identificação do responsável (DL 7/2004, art. 10.º). PREENCHER antes do lançamento público.
+owner:
+  name: "[nome ou denominação do responsável]"
+  email: "[endereço de contacto]"
+  address: "[endereço geográfico]"
+articles_per_page: 20

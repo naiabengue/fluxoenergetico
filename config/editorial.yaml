@@ -1,0 +1,99 @@
+# Modelo editorial do Fluxo Energético (alterar aqui, não no código).
+
+categories:
+  combustiveis-petroleo:
+    name: Combustíveis e petróleo
+    keywords: [petróleo, petroleo, crude, brent, wti, combustíve, combustive, gasolina, gasóleo, gasoleo, diesel, gpl, glp, jet fuel, refinar, refinaria, opep, opec, oil, fuel, gasoline, petrol, reservas estratégicas, strategic stocks, emergency stocks, lubrificante, biocombust, biofuel, hvo, saf, introduções ao consumo]
+  eletricidade-gas:
+    name: Eletricidade e gás
+    keywords: [eletricidade, electricidade, elétric, electric, electricity, power price, gás natural, gas natural, natural gas, gnl, lng, tarifa, tariff, mibel, omie, armazenamento de gás, gas storage, rede elétrica, grid, interligação, interconnect, contadores, mercado liberalizado]
+  renovaveis-transicao:
+    name: Renováveis e transição
+    keywords: [renováve, renovave, renewable, solar, fotovolt, photovolt, eólic, eolic, wind, hidrogénio, hidrogenio, hydrogen, eficiência energética, energy efficiency, armazenamento de energia, battery, baterias, mobilidade elétrica, electric vehicle, descarboniz, decarbon, emissões, emissions, nuclear, biometano, biomethane, transição energética, energy transition]
+  regulacao-politica:
+    name: Regulação e política
+    keywords: [regulament, regulation, diretiva, directive, portaria, decreto, consulta pública, public consultation, comissão europeia, european commission, pnec, licenciamento, coima, sancion, lei n.º, despacho, legislação, policy, política energética]
+  dados-indicadores:
+    name: Dados e indicadores
+    keywords: [estatística, estatistica, statistics, índice, indice, inflação, inflation, ipc, hicp, consumo de energia, energy consumption, balanço energético, energy balance, produção, production, importações, imports]
+  economia-investimento:
+    name: Economia e investimento
+    keywords: [investimento, investment, financiamento, financing, pib, gdp, empresas, companies, mercado de capitais, banco europeu, eib, bei, crescimento económico, economic growth]
+
+# Núcleo editorial do lançamento (as restantes categorias só entram com pontuação alta).
+core_categories: [combustiveis-petroleo, eletricidade-gas, renovaveis-transicao, regulacao-politica]
+non_core_penalty: 10
+
+geo:
+  pt_keywords: [portugal, portuguesa, português, portugues, lisboa, porto, sines, madeira, açores, acores, erse, dgeg, ense, ren , galp, edp, mibel, ibéric, iberian]
+  eu_keywords: [união europeia, uniao europeia, european union, ue , eu , euro area, área do euro, area do euro, eurozone, comissão europeia, european commission, eurostat, estados-membros, member states, europe, europa]
+
+scoring:
+  weights:            # pontos máximos por critério (soma = 100)
+    energia: 30
+    credibilidade: 25
+    novidade: 20
+    geografia: 15
+    verificabilidade: 10
+  freshness_hours:    # idade máxima → pontos
+    - [24, 20]
+    - [72, 15]
+    - [168, 8]
+  thresholds:
+    publish: 80       # ≥ 80 → candidato a publicação
+    review: 65        # 65–79 → só com revisão humana
+  min_title_chars: 20
+  cluster_similarity: 0.5     # Jaccard de títulos para considerar o mesmo acontecimento
+  duplicate_window_days: 30
+
+policy:
+  max_news_per_day: 1
+  auto_publish_news: false    # Fase 1: notícias com IA vão para revisão (pull request)
+  auto_publish_data: true     # peças de dados (sem IA) publicam-se sozinhas se validarem
+  ai_label: "Texto redigido com apoio de inteligência artificial a partir das fontes indicadas."
+  ai_label_reviewed: "Texto redigido com apoio de inteligência artificial e revisto pela redação antes da publicação."
+
+llm:
+  max_calls_per_run: 6
+  temperature: 0.2
+  timeout_s: 60
+  providers:
+    - kind: gemini
+      model: gemini-2.5-flash-lite
+      key_env: GEMINI_API_KEY
+    - kind: openai_compatible        # ex.: Mistral (plano gratuito), Groq, OpenRouter
+      key_env: LLM_API_KEY
+      base_url_env: LLM_BASE_URL
+      base_url_default: https://api.mistral.ai/v1
+      model_env: LLM_MODEL
+      model_default: mistral-small-latest
+
+validation:
+  news:
+    min_body_chars: 900
+    max_body_chars: 6000
+  data:
+    min_body_chars: 350
+    max_body_chars: 4000
+  title_min_chars: 25
+  title_max_chars: 110
+  max_copied_words: 12          # nenhuma sequência ≥ 12 palavras igual à fonte
+  min_key_points: 3
+  max_key_points: 5
+  forbidden_phrases: [certamente, garantidamente, sem dúvida, vai disparar, explosão de preços, segundo fontes não identificadas, alegadamente]
+
+data_pieces:
+  gas_storage:
+    weekday: 3                  # quinta-feira (0 = segunda)
+    countries: [EU, PT, ES]
+  brent_fx:
+    weekday: 0                  # segunda-feira
+    days: 14
+
+instagram:
+  posts_per_week: 2
+  weekdays: [1, 4]              # terça e sexta
+  max_slides: 7
+  auto_publish: false           # true só depois de configurar a API (ver docs/MANUAL.md)
+  api_version: v24.0
+  hashtags: ["#energia", "#portugal", "#mercadosenergeticos", "#transicaoenergetica", "#combustiveis", "#eletricidade"]
