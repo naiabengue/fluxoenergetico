@@ -1,0 +1,6 @@
+{"response":{"total":5,"frequency":"daily","data":[
+{"period":"2026-11-13","series":"RBRTE","series-description":"Europe Brent Spot Price FOB (Dollars per Barrel)","value":63.42,"units":"$/BBL"},
+{"period":"2026-11-12","series":"RBRTE","value":64.10,"units":"$/BBL"},
+{"period":"2026-11-11","series":"RBRTE","value":64.85,"units":"$/BBL"},
+{"period":"2026-11-07","series":"RBRTE","value":65.02,"units":"$/BBL"},
+{"period":"2026-11-06","series":"RBRTE","value":65.90,"units":"$/BBL"}]}}

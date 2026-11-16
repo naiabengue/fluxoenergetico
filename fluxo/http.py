@@ -37,16 +37,16 @@ class Fetcher:
         self._robots: dict[str, urllib.robotparser.RobotFileParser | None] = {}
         self._last_hit: dict[str, float] = {}
 
-    def _raw_get(self, url: str):
+    def _raw_get(self, url: str, headers: dict | None = None):
         host = urlsplit(url).netloc
         wait = self.min_interval - (time.monotonic() - self._last_hit.get(host, 0.0))
         if wait > 0:
             time.sleep(wait)
         self._last_hit[host] = time.monotonic()
         self.requests += 1
-        return self.session.get(url, headers={"User-Agent": self.user_agent,
-                                              "Accept-Language": "pt-PT,pt;q=0.9,en;q=0.8"},
-                                timeout=self.timeout)
+        hdrs = {"User-Agent": self.user_agent, "Accept-Language": "pt-PT,pt;q=0.9,en;q=0.8"}
+        hdrs.update(headers or {})
+        return self.session.get(url, headers=hdrs, timeout=self.timeout)
 
     def allowed(self, url: str) -> bool:
         parts = urlsplit(url)
@@ -65,14 +65,15 @@ class Fetcher:
         parser = self._robots[base]
         return True if parser is None else parser.can_fetch(self.user_agent, url)
 
-    def get(self, url: str) -> Response | None:
-        if not self.allowed(url):
+    def get(self, url: str, headers: dict | None = None, check_robots: bool = True) -> Response | None:
+        """check_robots=False só para APIs oficiais de dados (feitas para acesso programático)."""
+        if check_robots and not self.allowed(url):
             self.errors[url] = "bloqueado por robots.txt"
             return None
         last = ""
         for attempt in range(self.retries + 1):
             try:
-                r = self._raw_get(url)
+                r = self._raw_get(url, headers)
                 if r.status_code == 200:
                     return Response(url=str(getattr(r, "url", url)), status=200, text=r.text,
                                     content=r.content, headers=dict(r.headers))

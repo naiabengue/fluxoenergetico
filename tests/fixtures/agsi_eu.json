@@ -1,0 +1,4 @@
+{"last_page":1,"total":3,"dataset":"storage","gas_day":"2026-11-14","data":[
+{"name":"EU","code":"eu","gasDayStart":"2026-11-14","gasInStorage":"985.2210","workingGasVolume":"1131.4000","full":"87.08","trend":"-0.21","status":"E"},
+{"name":"EU","code":"eu","gasDayStart":"2026-11-13","gasInStorage":"987.6000","workingGasVolume":"1131.4000","full":"87.29","trend":"-0.15","status":"C"},
+{"name":"EU","code":"eu","gasDayStart":"2026-11-07","gasInStorage":"995.0400","workingGasVolume":"1131.4000","full":"87.95","trend":"-0.05","status":"C"}]}

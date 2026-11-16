@@ -1,0 +1,4 @@
+{"last_page":1,"total":3,"dataset":"storage","gas_day":"2026-11-14","data":[
+{"name":"Portugal","code":"PT","gasDayStart":"2026-11-14","gasInStorage":"3.4512","injection":"12.1","withdrawal":"0.0","workingGasVolume":"3.6510","full":"94.53","trend":"0.33","status":"E"},
+{"name":"Portugal","code":"PT","gasDayStart":"2026-11-13","gasInStorage":"3.4390","injection":"10.2","withdrawal":"0.0","workingGasVolume":"3.6510","full":"94.19","trend":"0.28","status":"C"},
+{"name":"Portugal","code":"PT","gasDayStart":"2026-11-07","gasInStorage":"3.3920","injection":"9.0","withdrawal":"0.0","workingGasVolume":"3.6510","full":"92.91","trend":"0.20","status":"C"}]}
