@@ -105,8 +105,9 @@ def render_carousel(article: dict[str, Any], out_dir: Path, max_slides: int = 7,
     if dark:
         label_font = _font(False, True, 26)
         lw = int(d.textlength(AI_IMAGE_LABEL, font=label_font))
-        d.rounded_rectangle([MARGIN - 14, H - 214, MARGIN + lw + 14, H - 166], radius=8, fill=(6, 20, 30))
-        d.text((MARGIN, H - 190), AI_IMAGE_LABEL, font=label_font, fill=WHITE, anchor="lm")
+        x1 = W - MARGIN
+        d.rounded_rectangle([x1 - lw - 28, 118, x1, 166], radius=8, fill=(6, 20, 30))
+        d.text((x1 - 14, 142), AI_IMAGE_LABEL, font=label_font, fill=WHITE, anchor="rm")
     slides.append(im)
 
     for i, point in enumerate(points, start=2):

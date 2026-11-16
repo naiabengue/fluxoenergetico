@@ -83,6 +83,7 @@ main.wrap { padding-top: 1.75rem; padding-bottom: 3rem; }
 
 .footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; font-size: .92rem; }
 .footer a { margin-right: 1rem; }
+.footer .small a { margin-right: 0; }
 
 @media (max-width: 34rem) {
   .archive li { grid-template-columns: 1fr; gap: 0; }
