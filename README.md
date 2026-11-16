@@ -2,6 +2,8 @@
 
 Publicação digital sobre energia em Portugal e na União Europeia. Este repositório contém tudo o que é preciso: o código, as 41 fontes, os dados recolhidos, os artigos e o site. A operação é automática e custa **0 €** (só o domínio, já existente, tem custo próprio).
 
+Endereço: https://naiabengue.com/fluxoenergetico/news/ · Instagram: @fluxoenergetico.pt · Responsável: Pedro Camilo Ramos.
+
 ## Como funciona
 
 ```
@@ -30,7 +32,7 @@ Fontes BEE (41) ─► Recolha diária (GitHub Actions) ─► data/items/*.json
 pip install -r requirements.txt
 python -m pytest -q                  # testes
 python -m fluxo daily                # recolha + peças de dados + notícias
-python -m fluxo build                # gera o site em _site/
+python -m fluxo build --out _site --subdir news   # gera o site em _site/news (raiz redireciona)
 python -m fluxo audit                # testa as fontes e escreve docs/ESTADO-FONTES.md
 python -m fluxo instagram            # prepara o carrossel da semana
 python -m fluxo status               # resumo das últimas execuções (docs/ESTADO.md)
