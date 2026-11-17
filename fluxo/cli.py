@@ -46,7 +46,10 @@ def cmd_daily(args) -> int:
 
     cfg = load_config(args.root)
     pieces = args.data.split(",") if args.data else "auto"
-    summary = run_daily(cfg, Fetcher(), _now(), os.environ, Path(args.drafts), data_pieces=pieces)
+    if args.catch_up:
+        pieces = []          # tentativa extra: só notícias; as peças de dados já correram de manhã
+    summary = run_daily(cfg, Fetcher(), _now(), os.environ, Path(args.drafts), data_pieces=pieces,
+                        catch_up=args.catch_up)
     if args.summary:
         Path(args.summary).parent.mkdir(parents=True, exist_ok=True)
         Path(args.summary).write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -237,6 +240,8 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--drafts", default="drafts")
     d.add_argument("--summary", default="out/summary.json")
     d.add_argument("--data", default="", help="forçar peças: brent_fx,gas_storage")
+    d.add_argument("--catch-up", action="store_true",
+                   help="tentativa extra num dia útil: só procura notícia se ainda não houver nenhuma hoje")
     b = add("build", cmd_build, "gerar o site estático")
     b.add_argument("--out", default="_site")
     b.add_argument("--subdir", default="", help="gerar em <out>/<subdir> com redirecionamento na raiz (ex.: news)")

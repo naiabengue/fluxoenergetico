@@ -3,6 +3,10 @@ name: Diário
 on:
   schedule:
     - cron: "23 6 * * *"          # 06:23 UTC (06:23 em Lisboa no inverno, 07:23 no verão)
+    # Dias úteis: tentativas extra só se ainda não houver notícia hoje (feriados de Lisboa tratados no código).
+    - cron: "23 7 * * 1-5"
+    - cron: "3 8 * * 1-5"         # antes do email das 8h30
+    - cron: "23 11 * * 1-5"       # último recurso
   workflow_dispatch:
     inputs:
       data:
@@ -35,7 +39,9 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
           AGSI_API_KEY: ${{ secrets.AGSI_API_KEY }}
         run: |
-          python -m fluxo daily --drafts drafts --summary out/summary.json --data "${{ inputs.data }}"
+          EXTRA=""
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "23 6 * * *" ]; then EXTRA="--catch-up"; fi
+          python -m fluxo daily --drafts drafts --summary out/summary.json --data "${{ inputs.data }}" $EXTRA
           python -m fluxo status > /dev/null
       - name: Guardar dados e artigos publicados
         run: |
@@ -50,7 +56,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -d drafts/content ] && [ -n "$(ls -A drafts/content 2>/dev/null)" ]; then
-            BR="revisao/$(date -u +%F)"
+            BR="revisao/$(date -u +%F-%H%M)"
             git switch -c "$BR"
             cp -r drafts/content/. content/
             git add content

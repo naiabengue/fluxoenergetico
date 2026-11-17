@@ -18,6 +18,7 @@ from .dedup import cluster
 from .extract import extract_text
 from .publish import decide, slugify, write_article
 from .scoring import score
+from .calendar_pt import is_business_day, lisbon_date
 from .store import Store
 from .validate import validate
 from .write.data_pieces import brent_fx_piece, gas_storage_piece
@@ -59,8 +60,15 @@ def _build_piece(name: str, cfg: Config, fetcher, env: Mapping[str, str], now: d
     return None, f"peça desconhecida: {name}"
 
 
+def _news_today(store: Store, today: str) -> int:
+    return sum(1 for v in store.processed().values()
+               if v.get("date") == today and v.get("decision") in ("publicar", "rever"))
+
+
 def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], drafts_dir: Path,
-              post: Callable = requests.post, data_pieces: list[str] | str = "auto") -> dict[str, Any]:
+              post: Callable = requests.post, data_pieces: list[str] | str = "auto",
+              catch_up: bool = False) -> dict[str, Any]:
+    """catch_up=True: tentativa extra num dia útil; só procura notícia se ainda não houver nenhuma hoje."""
     ed = cfg.editorial
     store = Store(cfg.root)
     llm.reset_usage()
@@ -95,7 +103,11 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
             summary["rejected"].append({"kind": "dados", "title": draft.title, "errors": v.errors})
             store.log_rejected({"date": now.isoformat(), "kind": "dados", "title": draft.title, "errors": v.errors})
 
-    # 3. Notícias (IA opcional)
+    # 3. Notícias (IA opcional). Nos dias úteis de Lisboa tem de haver uma: se nenhum item chega ao limiar
+    #    normal, aceita-se até policy.business_day_min_score, sempre com revisão humana (nunca publicação direta).
+    today = lisbon_date(now)
+    business = is_business_day(today)
+    fallback_min = ed["policy"].get("business_day_min_score")
     processed = store.processed()
     scored = []
     for it in store.recent_items(days=3, now=now):
@@ -106,20 +118,29 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
         except KeyError:
             continue
         sc = score(it, src, ed, now)
+        if sc.decision == "rejeitar" and business and fallback_min is not None and not sc.blocked \
+                and sc.total >= fallback_min:
+            sc.decision = "rever"
         if sc.decision != "rejeitar":
             scored.append((sc, it, src))
     scored.sort(key=lambda t: t[0].total, reverse=True)
     groups = cluster(scored, ed["scoring"]["cluster_similarity"], key=lambda t: t[1].title)
     candidates = [g[0] for g in groups]   # o mais pontuado de cada acontecimento
-    summary["news"] = {"candidates": len(candidates), "attempted": 0, "skipped": None}
+    summary["news"] = {"candidates": len(candidates), "attempted": 0, "skipped": None, "business_day": business}
+    already = _news_today(store, now.date().isoformat())
     has_llm = any(env.get(p.get("key_env", "")) for p in ed["llm"]["providers"])
-    if not has_llm:
+    if catch_up and already:
+        summary["news"]["skipped"] = "já há notícia hoje"
+        candidates = []
+    elif not has_llm:
         summary["news"]["skipped"] = "sem IA configurada"
         candidates = []
 
+    max_calls = ed["llm"].get("business_day_max_calls", ed["llm"]["max_calls_per_run"]) if business \
+        else ed["llm"]["max_calls_per_run"]
     produced = 0
     for sc, it, src in candidates:
-        if produced >= ed["policy"]["max_news_per_day"] or llm.USAGE["calls"] >= ed["llm"]["max_calls_per_run"]:
+        if produced >= ed["policy"]["max_news_per_day"] or llm.USAGE["calls"] >= max_calls:
             break
         summary["news"]["attempted"] += 1
         resp = fetcher.get(it.url)
@@ -160,6 +181,10 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
             store.log_rejected({"date": now.isoformat(), "kind": "noticia", "title": draft.title,
                                 "source": it.url, "errors": v.errors})
 
+    if business and not produced and not already:
+        summary["errors"].append(
+            f"Dia útil sem notícia ({summary['news']['candidates']} candidatos, {summary['news']['attempted']} tentados"
+            + (f", {summary['news']['skipped']}" if summary["news"]["skipped"] else "") + ")")
     summary["llm"] = dict(llm.USAGE)
     store.log_run({k: summary[k] for k in ("started", "published", "review", "rejected", "data_pieces", "news",
                                            "llm", "errors")} |

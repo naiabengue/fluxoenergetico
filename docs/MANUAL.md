@@ -73,7 +73,8 @@ Segredos: `SMTP_USER` (naiabengue@gmail.com), `SMTP_PASSWORD` (palavra-passe de 
 
 ## 2. Operação normal
 - **Todos os dias às 06:23 UTC:** recolha, peças de dados do dia (segunda: Brent e câmbio; quinta: armazenamento de gás), até 1 notícia. O site é atualizado sozinho.
-- **Notícias redigidas com IA (fase 1):** chegam como pull request "Revisão AAAA-MM-DD", com um email do GitHub. No telemóvel: app GitHub → *Pull requests* → *Files changed* para ler. Para corrigir: editar o ficheiro no próprio pull request. Para publicar: **Merge**. Para rejeitar: **Close**. Rever de verdade: o rótulo passa a dizer "revisto pela redação".
+- **Dias úteis em Lisboa (seg–sex, exceto feriados nacionais e 13 de junho):** tem de haver uma notícia. Se nada chegar ao limiar normal (65), o sistema aceita candidatos até `policy.business_day_min_score` (50), sempre com revisão humana, e pode usar até `llm.business_day_max_calls` (10) pedidos de IA. Se de manhã não sair nenhuma, repete às 07:23, 08:03 e 11:23 UTC (só notícias; não repete se já houver). Um dia útil sem notícia fica registado como «Dia útil sem notícia» no registo e em `docs/ESTADO.md`.
+- **Notícias redigidas com IA (fase 1):** chegam como pull request "Revisão AAAA-MM-DD" (e, até 15/12/2026, no email das 8h30), com um email do GitHub. No telemóvel: app GitHub → *Pull requests* → *Files changed* para ler. Para corrigir: editar o ficheiro no próprio pull request. Para publicar: **Merge**. Para rejeitar: **Close**. Rever de verdade: o rótulo passa a dizer "revisto pela redação".
 - **Domingo:** auditoria das fontes; se alguma fonte ativa falhar, abre um aviso (*Issues*).
 - **Terça e sexta:** carrossel do Instagram.
 
