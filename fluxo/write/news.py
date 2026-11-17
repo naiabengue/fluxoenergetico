@@ -37,7 +37,8 @@ Produz um JSON com estas chaves:
 - "tags": até 5 etiquetas em minúsculas;
 - "facts": 2 a 5 objetos {{"claim": "afirmação do teu texto", "evidence": "excerto LITERAL da fonte, com 6 a 30 palavras, que a prova"}};
 - "event_date": data do acontecimento (AAAA-MM-DD) se a fonte a indicar, senão null;
-- "suitable": false se a fonte não tiver informação suficiente para um artigo rigoroso, senão true."""
+- "suitable": false se a fonte não tiver informação suficiente para um artigo rigoroso, senão true;
+- "reason": se "suitable" for false, uma frase curta a explicar porquê; senão null."""
 
 
 def source_label(source: Source) -> str:
@@ -46,17 +47,25 @@ def source_label(source: Source) -> str:
     return f"{source.institution} — {source.name}"
 
 
+class Refused(Exception):
+    """A IA respondeu, mas recusou o item ou devolveu um texto incompleto: rejeita-se este item e segue-se."""
+
+
 def draft_news(item: dict[str, Any], source: Source, source_text: str, editorial: dict[str, Any],
                env: Mapping[str, str] | None = None, post: Callable = requests.post) -> Draft | None:
+    """Devolve o rascunho; None se nenhum fornecedor respondeu; levanta Refused se a resposta não serve."""
     prompt = PROMPT.format(institution=source.institution, source_name=source.name, url=item["url"],
                            published=item.get("published") or "não indicada", title=item["title"],
                            text=source_text[:12000], categories=", ".join(editorial["categories"]))
     data = generate_json(SYSTEM, prompt, editorial["llm"], env=env, post=post)
-    if not data or not data.get("suitable", True):
+    if not data:
         return None
+    if not data.get("suitable", True):
+        raise Refused("IA considerou o item inadequado: " + str(data.get("reason") or "sem motivo indicado")[:200])
     required = ("title", "lead", "body_markdown", "key_points", "category", "facts")
-    if any(k not in data for k in required):
-        return None
+    missing = [k for k in required if k not in data]
+    if missing:
+        raise Refused("resposta da IA incompleta (faltam: " + ", ".join(missing) + ")")
     return Draft(kind="noticia", title=str(data["title"]).strip(), lead=str(data["lead"]).strip(),
                  body=str(data["body_markdown"]).strip(), category=str(data["category"]).strip(),
                  key_points=[str(k).strip() for k in data["key_points"]][:5],

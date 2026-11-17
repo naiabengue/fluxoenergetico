@@ -7,6 +7,9 @@ on:
 permissions:
   contents: write
   issues: write
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
 jobs:
   auditar:
     runs-on: ubuntu-latest
@@ -23,6 +26,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/ESTADO-FONTES.md
           git diff --cached --quiet || git commit -m "auditoria das fontes: $(date -u +%F)"
+          git pull --rebase --autostash origin main
           git push
       - env:
           GH_TOKEN: ${{ github.token }}

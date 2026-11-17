@@ -8,7 +8,23 @@ from typing import Any, Callable, Mapping
 
 import requests
 
-USAGE: dict[str, Any] = {"calls": 0, "ok": 0, "failed": 0, "by_provider": {}}
+USAGE: dict[str, Any] = {"calls": 0, "ok": 0, "failed": 0, "by_provider": {}, "errors": []}
+
+
+def reset_usage() -> None:
+    USAGE.update({"calls": 0, "ok": 0, "failed": 0, "by_provider": {}, "errors": []})
+
+
+class ModelUnavailable(RuntimeError):
+    """O modelo pedido não existe ou não está disponível para este projeto (HTTP 404)."""
+
+
+def _http_error(provider: str, model: str, r) -> str:
+    try:
+        msg = str(r.json().get("error", {}).get("message", ""))[:160]
+    except Exception:
+        msg = ""
+    return f"{provider}/{model}: HTTP {r.status_code}" + (f" — {msg}" if msg else "")
 
 
 def _parse_json(text: str) -> dict[str, Any] | None:
@@ -26,17 +42,40 @@ def _parse_json(text: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def _gemini(p: dict, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable):
-    model = p.get("model", "gemini-2.5-flash-lite")
+def _gemini_models(p: dict) -> list[str]:
+    models = p.get("models") or [p.get("model", "gemini-3.5-flash-lite")]
+    return [str(m) for m in models]
+
+
+def _gemini_once(model: str, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable) -> str:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {"systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": temp, "responseMimeType": "application/json"}}
     r = post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=body, timeout=timeout)
+    if r.status_code == 404:
+        raise ModelUnavailable(_http_error("gemini", model, r))
     if r.status_code != 200:
-        raise RuntimeError(f"gemini HTTP {r.status_code}")
-    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-    return text, model
+        raise RuntimeError(_http_error("gemini", model, r))
+    cands = r.json().get("candidates") or []
+    if not cands:
+        raise RuntimeError(f"gemini/{model}: sem candidatos na resposta")
+    parts = (cands[0].get("content") or {}).get("parts") or []
+    text = "".join(pt.get("text", "") for pt in parts if not pt.get("thought"))
+    if not text.strip():
+        raise RuntimeError(f"gemini/{model}: resposta vazia (finishReason={cands[0].get('finishReason')})")
+    return text
+
+
+def _gemini(p: dict, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable):
+    last: Exception | None = None
+    for model in _gemini_models(p):
+        try:
+            return _gemini_once(model, key, system, prompt, temp, timeout, post), model
+        except ModelUnavailable as e:      # modelo retirado ou sem acesso: tenta o seguinte da lista
+            USAGE["errors"].append(str(e))
+            last = e
+    raise RuntimeError(f"gemini: nenhum modelo disponível ({last})")
 
 
 def _openai_compatible(p: dict, key: str, system: str, prompt: str, temp: float, timeout: int,
@@ -48,7 +87,7 @@ def _openai_compatible(p: dict, key: str, system: str, prompt: str, temp: float,
     r = post(base.rstrip("/") + "/chat/completions", headers={"Authorization": f"Bearer {key}"},
              json=body, timeout=timeout)
     if r.status_code != 200:
-        raise RuntimeError(f"openai_compatible HTTP {r.status_code}")
+        raise RuntimeError(_http_error("openai_compatible", model, r))
     return r.json()["choices"][0]["message"]["content"], model
 
 
@@ -73,11 +112,13 @@ def generate_json(system: str, prompt: str, llm_cfg: dict[str, Any],
                 continue
             data = _parse_json(text)
             if data is None:
-                raise ValueError("resposta não é JSON")
+                raise ValueError(f"{kind}/{model}: resposta não é JSON")
             USAGE["ok"] += 1
             data["_provider"], data["_model"] = kind, model
             return data
-        except Exception:
+        except Exception as e:  # nunca inclui a chave: as mensagens vêm só do estado HTTP e do corpo de erro
             USAGE["failed"] += 1
+            msg = str(e) or e.__class__.__name__
+            USAGE["errors"].append(msg.replace(key, "***") if key else msg)
             continue
     return None

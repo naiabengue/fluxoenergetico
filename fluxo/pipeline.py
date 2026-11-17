@@ -21,7 +21,7 @@ from .scoring import score
 from .store import Store
 from .validate import validate
 from .write.data_pieces import brent_fx_piece, gas_storage_piece
-from .write.news import draft_news
+from .write.news import Refused, draft_news
 
 MIN_SOURCE_CHARS = 600
 
@@ -58,7 +58,7 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
               post: Callable = requests.post, data_pieces: list[str] | str = "auto") -> dict[str, Any]:
     ed = cfg.editorial
     store = Store(cfg.root)
-    llm.USAGE.update({"calls": 0, "ok": 0, "failed": 0, "by_provider": {}})
+    llm.reset_usage()
     summary: dict[str, Any] = {"started": now.isoformat(), "published": [], "review": [], "rejected": [],
                                "data_pieces": {}, "news": {}, "errors": []}
 
@@ -123,10 +123,18 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
             store.mark_processed(it.id, "rejeitado: fonte inacessível ou curta", now.isoformat())
             summary["rejected"].append({"kind": "noticia", "title": it.title, "errors": ["texto da fonte indisponível"]})
             continue
-        draft = draft_news(it.to_dict(), src, text, ed, env=env, post=post)
+        try:
+            draft = draft_news(it.to_dict(), src, text, ed, env=env, post=post)
+        except Refused as why:
+            store.mark_processed(it.id, f"rejeitado: {why}", now.isoformat())
+            summary["rejected"].append({"kind": "noticia", "title": it.title, "errors": [str(why)]})
+            store.log_rejected({"date": now.isoformat(), "kind": "noticia", "title": it.title,
+                                "source": it.url, "errors": [str(why)]})
+            continue
         if draft is None:
-            summary["errors"].append(f"IA sem resposta utilizável para: {it.title}")
-            break   # quota ou falha do fornecedor: tenta-se no dia seguinte
+            reasons = "; ".join(dict.fromkeys(llm.USAGE["errors"])) or "sem detalhe"
+            summary["errors"].append(f"IA sem resposta utilizável para: {it.title} ({reasons})")
+            break   # quota ou falha do fornecedor: o item fica por tratar e tenta-se no dia seguinte
         draft.score = sc.total
         draft.slug = slugify(draft.title)
         v = validate(draft, text, ed, published, today=now.date())

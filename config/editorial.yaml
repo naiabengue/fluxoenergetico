@@ -62,7 +62,9 @@ llm:
   timeout_s: 60
   providers:
     - kind: gemini
-      model: gemini-2.5-flash-lite
+      # Por ordem; um modelo retirado ou sem acesso (HTTP 404) passa ao seguinte.
+      # Desde 2026 os modelos 2.5 só estão disponíveis para quem já os usava (página oficial de descontinuações).
+      models: [gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-2.5-flash-lite]
       key_env: GEMINI_API_KEY
     - kind: openai_compatible        # ex.: Mistral (plano gratuito), Groq, OpenRouter
       key_env: LLM_API_KEY

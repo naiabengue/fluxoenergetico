@@ -120,7 +120,7 @@ Todo o projeto (código, fontes, dados, artigos, registos) está no repositório
 | --- | --- | --- |
 | GitHub Actions (repositório público) | sem limite de minutos | — |
 | GitHub Pages | site até 1 GB; ~100 GB/mês de tráfego (limite flexível); 10 builds/hora | aviso do GitHub; migrar para Cloudflare Pages |
-| Gemini (quota gratuita) | limites por projeto não publicados nem garantidos (ver aistudio.google.com) | pedido falha → fornecedor seguinte → sem notícia nesse dia |
+| Gemini (quota gratuita) | limites por projeto não publicados nem garantidos (ver aistudio.google.com); modelos tentados por ordem: gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash-lite (os 2.5 só para projetos que já os usavam) | modelo indisponível (404) → modelo seguinte; outra falha → fornecedor seguinte → sem notícia nesse dia; o motivo aparece no registo como «IA: …» |
 | API do Instagram | 100 publicações por API em 24 h | irrelevante (2 por semana) |
 | Token do Instagram | 60 dias | publicação falha até renovar (1.5) |
 | Cloudflare Workers AI (plano gratuito) | 10 000 «neurons» por dia; cada capa FLUX.1 [schnell] gasta cerca de 58 | o pedido falha (sem cobrança no plano gratuito) e a capa fica tipográfica |

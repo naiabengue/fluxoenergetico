@@ -18,6 +18,28 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def format_summary(summary: dict) -> list[str]:
+    """Linhas legíveis para o registo do GitHub Actions: o quê, e porquê quando algo ficou de fora."""
+    c = summary["collect"]
+    llm_info = summary.get("llm", {})
+    lines = [f"Recolha: {c['new']} novos, {c['dup']} repetidos, {c['ok']} fontes ok, {c['failed']} com erro",
+             f"Publicados: {len(summary['published'])} | Para revisão: {len(summary['review'])} | "
+             f"Rejeitados: {len(summary['rejected'])} | IA: {llm_info.get('calls', 0)} pedidos"]
+    for name, outcome in summary.get("data_pieces", {}).items():
+        lines.append(f"Peça de dados {name}: {outcome}")
+    for p in summary["published"]:
+        lines.append(f"Publicado ({p['kind']}): {p['title']}")
+    for r in summary["review"]:
+        lines.append(f"Para revisão ({r['kind']}): {r['title']}")
+    for r in summary["rejected"]:
+        lines.append(f"Rejeitado ({r['kind']}): {r['title']} — {'; '.join(r.get('errors', [])) or 'sem motivo'}")
+    for e in dict.fromkeys(llm_info.get("errors", [])):
+        lines.append(f"IA: {e}")
+    for e in summary["errors"]:
+        lines.append(f"Aviso: {e}")
+    return lines
+
+
 def cmd_daily(args) -> int:
     from .http import Fetcher
     from .pipeline import run_daily
@@ -28,12 +50,7 @@ def cmd_daily(args) -> int:
     if args.summary:
         Path(args.summary).parent.mkdir(parents=True, exist_ok=True)
         Path(args.summary).write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
-    c = summary["collect"]
-    print(f"Recolha: {c['new']} novos, {c['dup']} repetidos, {c['ok']} fontes ok, {c['failed']} com erro")
-    print(f"Publicados: {len(summary['published'])} | Para revisão: {len(summary['review'])} | "
-          f"Rejeitados: {len(summary['rejected'])} | IA: {summary['llm']['calls']} pedidos")
-    for e in summary["errors"]:
-        print(f"Aviso: {e}")
+    print("\n".join(format_summary(summary)))
     return 0
 
 
