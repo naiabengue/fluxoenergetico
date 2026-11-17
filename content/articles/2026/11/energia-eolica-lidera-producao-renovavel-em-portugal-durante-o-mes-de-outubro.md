@@ -24,7 +24,7 @@ key_points:
 - O país é o quarto mercado europeu com maior penetração de energias renováveis.
 sources:
 - name: APREN — notícias
-  url: https://www.apren.pt/wp-content/uploads/2026/11/Outubro-Energia-eolica-lidera-e-assegura-mais-de-um-terco-da-producao-renovavel-em-Portugal_DCM.pdf#new_tab
+  url: https://www.apren.pt/wp-content/uploads/2026/11/Outubro-Energia-eolica-lidera-e-assegura-mais-de-um-terco-da-producao-renovavel-em-Portugal_DCM.pdf
   date: '2026-11-12'
 event_date: '2026-10-01'
 ai:
