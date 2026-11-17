@@ -18,11 +18,25 @@ def _num(v: float, d: int) -> str:
     return f"{v:,.{d}f}".replace(",", " ").replace(".", ",")
 
 
+def _fit_labels(fig, labels, pad_px: float = 12) -> None:
+    """Encolhe a área do gráfico até os rótulos finais caberem na imagem (nomes longos não ficam cortados)."""
+    for _ in range(4):
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        width = fig.bbox.width
+        overflow = max((t.get_window_extent(renderer).x1 for t in labels), default=0) + pad_px - width
+        if overflow <= 0:
+            return
+        right = fig.subplotpars.right - overflow / width
+        fig.subplots_adjust(right=max(0.5, right))
+
+
 def line_chart(series: dict[str, list[tuple[str, float]]], path: Path, ylabel: str, decimals: int = 1,
                source: str = "") -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150)
+    labels = []
     for i, (label, pts) in enumerate(series.items()):
         pts = sorted(pts)
         xs = [date.fromisoformat(d) for d, _ in pts]
@@ -30,8 +44,8 @@ def line_chart(series: dict[str, list[tuple[str, float]]], path: Path, ylabel: s
         color = SERIES[i % len(SERIES)]
         ax.plot(xs, ys, color=color, linewidth=2, solid_capstyle="round", label=label)
         ax.plot(xs[-1], ys[-1], "o", color=color, markersize=6, markeredgecolor="white", markeredgewidth=2)
-        ax.annotate(f"{label}: {_num(ys[-1], decimals)}", (xs[-1], ys[-1]), xytext=(8, 0),
-                    textcoords="offset points", va="center", fontsize=9, color=INK)
+        labels.append(ax.annotate(f"{label}: {_num(ys[-1], decimals)}", (xs[-1], ys[-1]), xytext=(8, 0),
+                                  textcoords="offset points", va="center", fontsize=9, color=INK))
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(GRID)
@@ -46,6 +60,7 @@ def line_chart(series: dict[str, list[tuple[str, float]]], path: Path, ylabel: s
     if source:
         fig.text(0.01, 0.01, f"Fonte: {source}", fontsize=8, color=MUTED)
     fig.subplots_adjust(right=0.82, bottom=0.14)
+    _fit_labels(fig, labels)
     fig.savefig(path, facecolor="white")
     plt.close(fig)
     return path

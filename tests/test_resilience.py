@@ -145,3 +145,14 @@ def test_data_piece_reason_includes_http_error(project, fixtures, tmp_path):
     summary = run_daily(cfg, Blocked(fixtures), MONDAY, {"AGSI_API_KEY": "k"}, tmp_path / "d",
                         data_pieces=["gas_storage"])
     assert "HTTP 403" in summary["data_pieces"]["gas_storage"], summary["data_pieces"]
+
+
+def test_chart_end_label_is_not_clipped(tmp_path):
+    import matplotlib.image as mpimg
+    from fluxo.charts import line_chart
+
+    pts = [(f"2026-10-{d:02d}", 130.0 - d) for d in range(1, 29)] + [("2026-11-11", 92.14)]
+    png = line_chart({"Brent (USD/barril)": pts}, tmp_path / "c.png", "USD por barril", 2, "EIA")
+    img = mpimg.imread(png)
+    right_edge = img[:, -4:, :3]
+    assert right_edge.min() > 0.97, "o rótulo final do gráfico está cortado à direita"
