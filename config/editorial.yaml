@@ -99,7 +99,7 @@ instagram:
   posts_per_week: 2
   weekdays: [1, 4]              # terça e sexta
   max_slides: 7
-  auto_publish: false           # true só depois de configurar a API (ver docs/MANUAL.md)
+  auto_publish: true            # API configurada e verificada a 17/11/2026 (ver docs/MANUAL.md, 1.5)
   api_version: v24.0
   # unified = login unificado (apps criadas desde 2026; graph.facebook.com; token que não expira)
   # instagram = login do Instagram (apps antigas; graph.instagram.com; token de 60 dias renovado todos os meses)
