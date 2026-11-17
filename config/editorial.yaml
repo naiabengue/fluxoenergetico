@@ -101,6 +101,9 @@ instagram:
   max_slides: 7
   auto_publish: false           # true só depois de configurar a API (ver docs/MANUAL.md)
   api_version: v24.0
+  # unified = login unificado (apps criadas desde 2026; graph.facebook.com; token que não expira)
+  # instagram = login do Instagram (apps antigas; graph.instagram.com; token de 60 dias renovado todos os meses)
+  login: unified
   hashtags: ["#energia", "#portugal", "#mercadosenergeticos", "#transicaoenergetica", "#combustiveis", "#eletricidade"]
   # Estilo «misto»: capa com gancho, miolo sóbrio, apelo final. Emojis só na legenda (no máximo 3).
   hook_emoji:

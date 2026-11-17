@@ -1,4 +1,5 @@
-# Dia 1 de cada mês: renova o token do Instagram (válido 60 dias). Requer o segredo GH_PAT (ver docs/MANUAL.md).
+# Dia 1 de cada mês: renova o token do Instagram, só no «login do Instagram» (token de 60 dias). Requer GH_PAT.
+# Com o login unificado (apps novas da Meta) o token não expira e este trabalho não faz nada.
 name: Renovar token do Instagram
 on:
   schedule:
@@ -23,5 +24,5 @@ jobs:
           if [ -z "$IG_ACCESS_TOKEN" ] || [ -z "$GH_TOKEN" ]; then echo "Sem IG_ACCESS_TOKEN ou GH_PAT: nada a fazer."; exit 0; fi
           mkdir -p out
           python -m fluxo refresh-ig-token --out out/ig_token
-          gh secret set IG_ACCESS_TOKEN --repo "${{ github.repository }}" < out/ig_token
+          if [ -s out/ig_token ]; then gh secret set IG_ACCESS_TOKEN --repo "${{ github.repository }}" < out/ig_token; fi
           rm -f out/ig_token

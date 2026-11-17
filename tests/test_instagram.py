@@ -125,3 +125,65 @@ def test_closing_slide_has_cta_above_link_and_no_emoji(project):
     assert texts[0] == ig["cta_slide"]
     assert any("naiabengue.com/fluxoenergetico/news" in t for t in texts[1:])
     assert not _emojis(" ".join(texts))
+
+
+class _R:
+    def __init__(self, data, code=200):
+        self.status_code, self._d = code, data
+
+    def json(self):
+        return self._d
+
+
+def test_publish_carousel_uses_unified_login_host():
+    urls = []
+
+    def post(url, data=None, timeout=None):
+        urls.append(url)
+        return _R({"id": "final" if url.endswith("media_publish") else f"c{len(urls)}"})
+
+    def get(url, params=None, timeout=None):
+        urls.append(url)
+        return _R({"status_code": "FINISHED"})
+
+    publish_carousel(["https://x.pt/1.jpg", "https://x.pt/2.jpg"], "legenda", "17841", "TOKEN", "v24.0",
+                     post=post, get=get, sleep=lambda s: None, host="https://graph.facebook.com")
+    assert urls and all(u.startswith("https://graph.facebook.com/v24.0/") for u in urls)
+
+
+def test_graph_host_comes_from_config(project):
+    from fluxo.instagram.publish import graph_host
+
+    ed = load_config(project).editorial
+    assert graph_host(ed) == "https://graph.facebook.com"          # apps novas da Meta: login unificado
+    ed["instagram"]["login"] = "instagram"
+    assert graph_host(ed) == "https://graph.instagram.com"
+
+
+def test_check_account_reads_username_and_hides_token():
+    from fluxo.instagram.publish import check_account
+
+    seen = {}
+
+    def get(url, params=None, timeout=None):
+        seen.update(url=url, params=params)
+        return _R({"id": "17841", "username": "fluxoenergetico.pt"})
+
+    assert check_account("17841", "TOKEN", "v24.0", "https://graph.facebook.com", get=get) == "fluxoenergetico.pt"
+    assert seen["url"] == "https://graph.facebook.com/v24.0/17841"
+    bad = lambda url, params=None, timeout=None: _R({"error": {"message": "Invalid OAuth access token", "code": 190}}, 400)
+    try:
+        check_account("17841", "TOKEN", "v24.0", "https://graph.facebook.com", get=bad)
+        raise AssertionError("devia falhar")
+    except RuntimeError as e:
+        assert "TOKEN" not in str(e) and "190" in str(e)
+
+
+def test_unified_login_token_is_not_refreshed(project, tmp_path, monkeypatch, capsys):
+    from fluxo import cli
+
+    monkeypatch.setenv("IG_ACCESS_TOKEN", "TOKEN")
+    out = tmp_path / "ig_token"
+    rc = cli.main(["refresh-ig-token", "--root", str(project), "--out", str(out)])
+    assert rc == 0 and not out.exists()
+    assert "não expira" in capsys.readouterr().out

@@ -39,7 +39,7 @@ As contas dos serviços de dados e IA ficam em nome de `naiabengue@gmail.com`.
 | `LLM_API_KEY` + variáveis `LLM_BASE_URL`, `LLM_MODEL` | IA de reserva (ex.: Mistral) | console.mistral.ai; o plano gratuito pode exigir telemóvel e usar os pedidos para treino | Opcional |
 | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | Imagem de capa do carrossel gerada por IA | conta gratuita em dash.cloudflare.com → *AI → Workers AI → Use REST API*: copiar o *Account ID* e criar o token com o modelo *Workers AI* (permissões *Workers AI – Read* e *Edit*). Não ativar o plano Workers Paid | Opcional |
 | `IG_ACCESS_TOKEN`, `IG_USER_ID` | Publicar no Instagram pela API | ver 1.5 | Recomendado |
-| `GH_PAT` | Renovar o token do Instagram todos os meses | token *fine-grained* só deste repositório, permissão *Secrets: read and write* | Recomendado |
+| `GH_PAT` | Renovar o token do Instagram todos os meses (só no «login do Instagram»; o login unificado não precisa) | token *fine-grained* só deste repositório, permissão *Secrets: read and write* | Não necessário |
 
 Sem nenhuma chave de IA, o sistema publica as peças de dados e não publica notícias. Sem `CF_*`, a capa do carrossel é tipográfica.
 
@@ -47,13 +47,16 @@ Sem nenhuma chave de IA, o sistema publica as peças de dados e não publica not
 `config/site.yaml` já tem o responsável (`owner`: Pedro Camilo Ramos, `pedrocamiloramos@gmail.com`, Lisboa; dever de identificação do prestador, DL 7/2004, art. 10.º) e a nota de independência (`disclaimer`), mostrada no rodapé e em «Sobre». Os temas em `excluded_keywords` (`config/editorial.yaml`) nunca entram na recolha editorial. O registo na ERC fica para tratar depois do lançamento.
 
 ### 1.5 Instagram (modo automático pela API)
-1. Na app Instagram de @fluxoenergetico.pt: *Definições → Tipo de conta e ferramentas → Mudar para conta profissional* (Criador ou Empresa). Não é preciso página do Facebook.
-2. Em developers.facebook.com, criar uma app do tipo *Instagram API com início de sessão do Instagram* e adicionar a conta @fluxoenergetico.pt como utilizador com função na app (acesso padrão chega para a própria conta; não é preciso revisão da app).
-3. Gerar um token com as permissões `instagram_business_basic` e `instagram_business_content_publish`, trocá-lo por um token de longa duração (60 dias) e obter o `user_id` em `https://graph.instagram.com/me?fields=user_id,username`.
-4. Guardar `IG_ACCESS_TOKEN` e `IG_USER_ID` como segredos e mudar `instagram.auto_publish` para `true` em `config/editorial.yaml`.
-5. Com `GH_PAT` configurado, o workflow *Renovar token do Instagram* renova o token no dia 1 de cada mês. Sem ele, repetir o passo 3 antes de passarem 60 dias.
+Configurado a 17/11/2026 com o **login unificado**, a única opção que a Meta oferece às apps novas.
+1. @fluxoenergetico.pt é uma conta profissional (*Empresa*, categoria «Site de notícias», categoria escondida no perfil). Não é preciso página do Facebook.
+2. App da Meta **Fluxo Energetico Publicador** (developers.facebook.com, conta de programador de Pedro Camilo Ramos), caso de uso *Gerenciar mensagens e conteúdo no Instagram*, ligada ao portfólio empresarial «Pedro». Configuração *API do Instagram (login unificado)*: token de utilizador de sistema, **não expira**.
+3. Em *Funções do app*, @fluxoenergetico.pt tem a função *Testador do Instagram* (convite aceite em Instagram → Definições → Apps e sites → Convites de teste). O acesso padrão chega para publicar na própria conta; não é preciso revisão da app.
+4. Token: *Casos de uso → Personalizar → API setup with Unified login → 2. Gerar tokens de acesso → Gerar token* (abre uma janela da Meta; tem de ser o proprietário a clicar). Guardar como segredo `IG_ACCESS_TOKEN`. O ID da conta (`IG_USER_ID`) aparece na mesma tabela por baixo do nome.
+5. Confirmar com o workflow manual **Verificar Instagram** (não publica nada; deve dizer «Token válido para a conta @fluxoenergetico.pt»). Depois mudar `instagram.auto_publish` para `true` em `config/editorial.yaml`.
+6. O código chama `graph.facebook.com` (`instagram.login: unified`). O workflow *Renovar token do Instagram* não faz nada neste modo. Se um dia a app for trocada por uma com «login do Instagram», pôr `instagram.login: instagram`: passa a usar `graph.instagram.com` e a renovar o token de 60 dias (requer `GH_PAT`).
+7. Se o token deixar de funcionar (palavra-passe alterada, app removida, testador retirado), gerar um novo no passo 4 e substituir o segredo.
 
-As imagens do carrossel são servidas pelo próprio site (`https://naiabengue.com/fluxoenergetico/news/instagram/...`), que é o endereço público que a API do Instagram vai buscar. O ecrã da Meta muda com frequência: seguir a documentação oficial "Instagram API with Instagram Login" se os nomes dos menus forem outros.
+As imagens do carrossel são servidas pelo próprio site (`https://naiabengue.com/fluxoenergetico/news/instagram/...`), que é o endereço público que a API do Instagram vai buscar. O ecrã da Meta muda com frequência: se os nomes dos menus forem outros, seguir a documentação oficial da API do Instagram com login unificado.
 
 **Estilo (misto):** capa com o título como gancho e indicação para deslizar; miolo sóbrio com um ponto-chave por imagem; último diapositivo com «Guarda e partilha» e a ligação. A legenda tem no máximo 3 emojis (gancho, apelo a guardar e comentar, ligação), fontes, nota de IA e até 8 hashtags. Textos e emojis em `instagram` no `config/editorial.yaml`. Com `CF_*` configurado e `ai_cover: true`, a capa usa uma imagem gerada por IA (FLUX.1 [schnell], sem pessoas, texto nem logótipos) identificada na própria imagem («Imagem gerada por IA») e na legenda.
 
@@ -122,5 +125,5 @@ Todo o projeto (código, fontes, dados, artigos, registos) está no repositório
 | GitHub Pages | site até 1 GB; ~100 GB/mês de tráfego (limite flexível); 10 builds/hora | aviso do GitHub; migrar para Cloudflare Pages |
 | Gemini (quota gratuita) | limites por projeto não publicados nem garantidos (ver aistudio.google.com); modelos tentados por ordem: gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash-lite (os 2.5 só para projetos que já os usavam) | modelo indisponível (404) → modelo seguinte; outra falha → fornecedor seguinte → sem notícia nesse dia; o motivo aparece no registo como «IA: …» |
 | API do Instagram | 100 publicações por API em 24 h | irrelevante (2 por semana) |
-| Token do Instagram | 60 dias | publicação falha até renovar (1.5) |
+| Token do Instagram | login unificado: não expira; login do Instagram: 60 dias | publicação falha até gerar novo token (1.5) |
 | Cloudflare Workers AI (plano gratuito) | 10 000 «neurons» por dia; cada capa FLUX.1 [schnell] gasta cerca de 58 | o pedido falha (sem cobrança no plano gratuito) e a capa fica tipográfica |

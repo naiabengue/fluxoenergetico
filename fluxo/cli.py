@@ -118,7 +118,7 @@ def cmd_instagram(args) -> int:
 
 
 def cmd_instagram_publish(args) -> int:
-    from .instagram.publish import publish_carousel, publish_enabled, slide_urls
+    from .instagram.publish import graph_host, publish_carousel, publish_enabled, slide_urls
     from .site.build import public_base
     from .store import Store
 
@@ -139,16 +139,31 @@ def cmd_instagram_publish(args) -> int:
             time.sleep(30)
         caption = (cfg.root / "content" / info["folder"] / "legenda.txt").read_text(encoding="utf-8")
         info["media_id"] = publish_carousel(urls, caption, os.environ["IG_USER_ID"], os.environ["IG_ACCESS_TOKEN"],
-                                            cfg.editorial["instagram"].get("api_version", ""))
+                                            cfg.editorial["instagram"].get("api_version", ""),
+                                            host=graph_host(cfg.editorial))
         info["published"] = _now().isoformat()
         print(f"Publicado no Instagram: {slug} ({info['media_id']})")
     store.save_instagram_state(state)
     return 0
 
 
+def cmd_instagram_check(args) -> int:
+    from .instagram.publish import check_account, graph_host
+
+    cfg = load_config(args.root)
+    user = check_account(os.environ["IG_USER_ID"], os.environ["IG_ACCESS_TOKEN"],
+                         cfg.editorial["instagram"].get("api_version", ""), graph_host(cfg.editorial))
+    print(f"Token válido para a conta @{user}.")
+    return 0
+
+
 def cmd_refresh_token(args) -> int:
     from .instagram.publish import refresh_token
 
+    cfg = load_config(args.root)
+    if cfg.editorial["instagram"].get("login", "unified") == "unified":
+        print("Login unificado: o token de utilizador de sistema não expira; nada a renovar.")
+        return 0
     token, expires = refresh_token(os.environ["IG_ACCESS_TOKEN"])
     print(f"::add-mask::{token}")
     Path(args.out).write_text(token, encoding="utf-8")
@@ -193,6 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     add("audit", cmd_audit, "testar todas as fontes")
     add("instagram", cmd_instagram, "preparar o carrossel da semana")
     add("instagram-publish", cmd_instagram_publish, "publicar carrosséis preparados (se ativo)")
+    add("instagram-check", cmd_instagram_check, "confirmar que o token dá acesso à conta (não publica)")
     r = add("refresh-ig-token", cmd_refresh_token, "renovar o token do Instagram")
     r.add_argument("--out", default="out/ig_token")
     add("status", cmd_status, "resumo das últimas execuções")
