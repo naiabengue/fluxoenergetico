@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "12 8 * * *"      # 08:12 UTC = 08:12 em Lisboa no inverno; o passo espera até às 08:30
   workflow_dispatch:
+    inputs:
+      teste:
+        description: "Enviar um email de teste mesmo sem notícias por rever"
+        type: boolean
+        default: true
 permissions:
   contents: read
   pull-requests: read
@@ -24,4 +29,4 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
-        run: python -m fluxo notify-review ${{ github.event_name == 'schedule' && '--wait' || '' }}
+        run: python -m fluxo notify-review ${{ github.event_name == 'schedule' && '--wait' || '' }} ${{ inputs.teste && '--test' || '' }}

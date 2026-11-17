@@ -82,3 +82,28 @@ def test_cli_without_email_config_sends_nothing(project, monkeypatch, capsys):
                                                                               tzinfo=__import__("datetime").timezone.utc))
     assert cli.main(["notify-review", "--root", str(project)]) == 0
     assert "Sem configuração de email" in capsys.readouterr().out
+
+
+def test_cli_test_mode_sends_even_without_reviews(project, monkeypatch, capsys):
+    import datetime as dt
+
+    from fluxo import cli, notify
+
+    env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t", "SMTP_USER": "a@gmail.com",
+           "SMTP_PASSWORD": "p", "REVIEW_EMAIL_TO": "b@exemplo.pt"}
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(cli, "_now", lambda: dt.datetime(2026, 11, 17, 16, 0, tzinfo=dt.timezone.utc))
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return []
+
+    monkeypatch.setattr(cli.requests, "get", lambda *a, **k: R())
+    sent = []
+    monkeypatch.setattr(notify, "send_email", lambda *a, **k: sent.append(a))
+    assert cli.main(["notify-review", "--root", str(project), "--test"]) == 0
+    assert sent and sent[0][0].startswith("Fluxo Energético: teste") and sent[0][4] == "b@exemplo.pt"

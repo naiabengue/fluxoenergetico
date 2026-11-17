@@ -172,11 +172,12 @@ def cmd_refresh_token(args) -> int:
 
 
 def cmd_notify_review(args) -> int:
-    from .notify import email_due, review_digest, seconds_until, send_email
+    from . import notify
+    from .notify import email_due, review_digest, seconds_until
 
     cfg = load_config(args.root)
     today = _now().date()
-    if not email_due(cfg.editorial, today):
+    if not args.test and not email_due(cfg.editorial, today):
         print("Fora do período de revisão por email: nada a enviar.")
         return 0
     need = ["GITHUB_REPOSITORY", "GITHUB_TOKEN", "SMTP_USER", "SMTP_PASSWORD", "REVIEW_EMAIL_TO"]
@@ -189,12 +190,18 @@ def cmd_notify_review(args) -> int:
                               "Accept": "application/vnd.github+json"})
     r.raise_for_status()
     digest = review_digest(r.json(), today)
+    if digest is None and args.test:
+        until = cfg.editorial["policy"].get("review_email_until", "—")
+        digest = (f"Fluxo Energético: teste do aviso de revisão ({today:%d/%m/%Y})",
+                  "Teste: o aviso diário está configurado.\n\nTodos os dias às 8h30 (Lisboa), até "
+                  f"{until}, recebes aqui a ligação para cada notícia à espera de revisão. "
+                  "Nos dias sem notícias por rever não há email.\n\n— Fluxo Energético (mensagem automática)")
     if digest is None:
         print("Nenhuma notícia à espera de revisão: sem email hoje.")
         return 0
     if args.wait:
         time.sleep(seconds_until(_now(), args.at))
-    send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], os.environ["REVIEW_EMAIL_TO"])
+    notify.send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], os.environ["REVIEW_EMAIL_TO"])
     print(f"Email enviado: {digest[0]}")
     return 0
 
@@ -242,6 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     n = add("notify-review", cmd_notify_review, "email com as notícias à espera de revisão")
     n.add_argument("--wait", action="store_true", help="esperar pela hora local indicada em --at")
     n.add_argument("--at", default="08:30")
+    n.add_argument("--test", action="store_true", help="enviar um email de teste mesmo sem notícias por rever")
     add("status", cmd_status, "resumo das últimas execuções")
     args = p.parse_args(argv)
     return args.fn(args)
