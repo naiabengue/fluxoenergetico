@@ -113,3 +113,12 @@ def test_fetcher_respects_robots_txt():
     assert f.get("https://gee.gov.pt/pt/indicadores") is None
     assert "robots" in f.errors["https://gee.gov.pt/pt/indicadores"]
     assert f.get("https://gee.gov.pt/outra") is not None
+
+
+def test_rss_link_drops_fragment():
+    feed = ('<?xml version="1.0"?><rss version="2.0"><channel><title>A</title><item>'
+            '<title>Outubro: energia eólica lidera a produção renovável</title>'
+            '<link>https://www.apren.pt/wp-content/uploads/2026/11/Outubro.pdf#new_tab</link>'
+            '<pubDate>Thu, 12 Nov 2026 10:00:00 +0000</pubDate></item></channel></rss>')
+    items = parse_feed(feed, _src(id="apren", method="rss"), NOW)
+    assert items[0].url == "https://www.apren.pt/wp-content/uploads/2026/11/Outubro.pdf"

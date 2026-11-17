@@ -23,7 +23,7 @@ def parse_feed(text: str, source: Source, now: datetime) -> list[Item]:
     flt = re.compile(source.title_filter) if source.title_filter else None
     for e in feed.entries[:MAX_ITEMS_PER_FEED]:
         title = re.sub(r"\s+", " ", e.get("title", "")).strip()
-        link = e.get("link", "")
+        link = e.get("link", "").split("#")[0]
         if not title or not link or (flt and not flt.search(title)):
             continue
         parsed = e.get("published_parsed") or e.get("updated_parsed")
