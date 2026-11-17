@@ -16,7 +16,7 @@ def reset_usage() -> None:
 
 
 class ModelUnavailable(RuntimeError):
-    """O modelo pedido não existe ou não está disponível para este projeto (HTTP 404)."""
+    """O modelo não serve agora: não existe para este projeto (404), sem quota (429) ou sobrecarregado (503)."""
 
 
 def _http_error(provider: str, model: str, r) -> str:
@@ -53,7 +53,7 @@ def _gemini_once(model: str, key: str, system: str, prompt: str, temp: float, ti
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": temp, "responseMimeType": "application/json"}}
     r = post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=body, timeout=timeout)
-    if r.status_code == 404:
+    if r.status_code in (404, 429, 503):   # retirado, sem quota ou sobrecarregado: as quotas são por modelo
         raise ModelUnavailable(_http_error("gemini", model, r))
     if r.status_code != 200:
         raise RuntimeError(_http_error("gemini", model, r))
@@ -72,7 +72,7 @@ def _gemini(p: dict, key: str, system: str, prompt: str, temp: float, timeout: i
     for model in _gemini_models(p):
         try:
             return _gemini_once(model, key, system, prompt, temp, timeout, post), model
-        except ModelUnavailable as e:      # modelo retirado ou sem acesso: tenta o seguinte da lista
+        except ModelUnavailable as e:      # tenta o modelo seguinte da lista
             USAGE["errors"].append(str(e))
             last = e
     raise RuntimeError(f"gemini: nenhum modelo disponível ({last})")

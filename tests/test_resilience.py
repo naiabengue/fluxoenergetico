@@ -115,3 +115,33 @@ def test_workflows_that_push_to_main_share_one_queue_and_rebase_first():
         assert (doc.get("concurrency") or {}).get("group") == "pipeline", wf.name
         for lines, i in main_pushes:
             assert any("git pull --rebase" in l for l in lines[:i]), f"{wf.name}: falta git pull --rebase antes de git push"
+
+
+def test_gemini_moves_to_next_model_when_busy(project):
+    cfg = load_config(project)
+    llm.reset_usage()
+
+    def post(url, **kw):
+        if "gemini-3.5-flash-lite" in url:
+            return Resp(503, {"error": {"message": "This model is currently experiencing high demand."}})
+        return _gemini_ok({"ok": True})
+
+    out = llm.generate_json("s", "p", cfg.editorial["llm"], env={"GEMINI_API_KEY": "k"}, post=post)
+    assert out["_model"] == "gemini-3.1-flash-lite"
+    assert any("503" in e for e in llm.USAGE["errors"])
+
+
+def test_data_piece_reason_includes_http_error(project, fixtures, tmp_path):
+    cfg = load_config(project)
+    _only(cfg, set())
+
+    class Blocked(FakeFetcher):
+        def get(self, url, headers=None, check_robots=True):
+            if "agsi.gie.eu" in url:
+                self.errors[url] = "HTTP 403"
+                return None
+            return super().get(url, headers, check_robots)
+
+    summary = run_daily(cfg, Blocked(fixtures), MONDAY, {"AGSI_API_KEY": "k"}, tmp_path / "d",
+                        data_pieces=["gas_storage"])
+    assert "HTTP 403" in summary["data_pieces"]["gas_storage"], summary["data_pieces"]

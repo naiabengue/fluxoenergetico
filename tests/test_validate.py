@@ -108,7 +108,8 @@ def test_llm_chain_falls_back_to_second_provider(project):
     out = generate_json("sys", "prompt", cfg.editorial["llm"],
                         env={"GEMINI_API_KEY": "a", "LLM_API_KEY": "b"}, post=fake_post)
     assert out["ok"] is True and out["_provider"] == "openai_compatible"
-    assert len(calls) == 2
+    # 429 é por modelo: tenta os três modelos Gemini e só depois o segundo fornecedor
+    assert sum("generativelanguage" in u for u in calls) == 3 and len(calls) == 4
 
 
 def test_extract_html_prefers_article_text():

@@ -30,13 +30,18 @@ def _due_pieces(cfg: Config, now: datetime) -> list[str]:
     return [name for name, p in cfg.editorial.get("data_pieces", {}).items() if p.get("weekday") == now.weekday()]
 
 
+def _http_errors(fetcher, host: str) -> str:
+    errs = sorted({e for u, e in getattr(fetcher, "errors", {}).items() if host in u})
+    return (": " + "; ".join(errs)) if errs else ""
+
+
 def _build_piece(name: str, cfg: Config, fetcher, env: Mapping[str, str], now: datetime):
     if name == "brent_fx":
         if not env.get("EIA_API_KEY"):
             return None, "falta EIA_API_KEY"
         brent, fx = fetch_brent(fetcher, env["EIA_API_KEY"]), fetch_usd(fetcher)
         if len(brent) < 3 or len(fx) < 3:
-            return None, "dados insuficientes (EIA/BCE)"
+            return None, "dados insuficientes (EIA/BCE)" + _http_errors(fetcher, "api.eia.gov") + _http_errors(fetcher, "ecb.europa.eu")
         draft, evidence = brent_fx_piece(brent, fx)
         series = {"Brent (USD/barril)": [(o.date, o.value) for o in brent]}
         return (draft, evidence, series, "USD por barril", 2, "EIA"), None
@@ -46,7 +51,7 @@ def _build_piece(name: str, cfg: Config, fetcher, env: Mapping[str, str], now: d
         key = env["AGSI_API_KEY"]
         eu, pt = fetch_agsi(fetcher, key, "eu", today=now.date()), fetch_agsi(fetcher, key, "PT", today=now.date())
         if len(eu) < 2 or len(pt) < 2:
-            return None, "dados insuficientes (AGSI)"
+            return None, "dados insuficientes (AGSI)" + _http_errors(fetcher, "agsi.gie.eu")
         es = fetch_agsi(fetcher, key, "ES", today=now.date()) if "ES" in cfg.editorial["data_pieces"]["gas_storage"].get("countries", []) else []
         draft, evidence = gas_storage_piece(eu, pt, es or None)
         series = {"UE": [(s.date, s.full) for s in eu], "Portugal": [(s.date, s.full) for s in pt]}
