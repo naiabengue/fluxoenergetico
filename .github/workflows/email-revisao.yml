@@ -1,0 +1,27 @@
+# Todos os dias às 8h30 (Lisboa): email com as notícias à espera de revisão, só até policy.review_email_until.
+# Segredos: SMTP_USER (Gmail que envia), SMTP_PASSWORD (palavra-passe de app do Google), REVIEW_EMAIL_TO (destino).
+# O destino fica num segredo para não aparecer no repositório público.
+name: Email de revisão
+on:
+  schedule:
+    - cron: "12 8 * * *"      # 08:12 UTC = 08:12 em Lisboa no inverno; o passo espera até às 08:30
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
+        run: python -m fluxo notify-review ${{ github.event_name == 'schedule' && '--wait' || '' }}

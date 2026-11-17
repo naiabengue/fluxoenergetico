@@ -171,6 +171,34 @@ def cmd_refresh_token(args) -> int:
     return 0
 
 
+def cmd_notify_review(args) -> int:
+    from .notify import email_due, review_digest, seconds_until, send_email
+
+    cfg = load_config(args.root)
+    today = _now().date()
+    if not email_due(cfg.editorial, today):
+        print("Fora do período de revisão por email: nada a enviar.")
+        return 0
+    need = ["GITHUB_REPOSITORY", "GITHUB_TOKEN", "SMTP_USER", "SMTP_PASSWORD", "REVIEW_EMAIL_TO"]
+    if missing := [k for k in need if not os.environ.get(k)]:
+        print("Sem configuração de email (" + ", ".join(missing) + "): nada a enviar.")
+        return 0
+    r = requests.get(f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/pulls",
+                     params={"state": "open", "per_page": 50}, timeout=30,
+                     headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                              "Accept": "application/vnd.github+json"})
+    r.raise_for_status()
+    digest = review_digest(r.json(), today)
+    if digest is None:
+        print("Nenhuma notícia à espera de revisão: sem email hoje.")
+        return 0
+    if args.wait:
+        time.sleep(seconds_until(_now(), args.at))
+    send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], os.environ["REVIEW_EMAIL_TO"])
+    print(f"Email enviado: {digest[0]}")
+    return 0
+
+
 def cmd_status(args) -> int:
     from .store import Store
 
@@ -211,6 +239,9 @@ def main(argv: list[str] | None = None) -> int:
     add("instagram-check", cmd_instagram_check, "confirmar que o token dá acesso à conta (não publica)")
     r = add("refresh-ig-token", cmd_refresh_token, "renovar o token do Instagram")
     r.add_argument("--out", default="out/ig_token")
+    n = add("notify-review", cmd_notify_review, "email com as notícias à espera de revisão")
+    n.add_argument("--wait", action="store_true", help="esperar pela hora local indicada em --at")
+    n.add_argument("--at", default="08:30")
     add("status", cmd_status, "resumo das últimas execuções")
     args = p.parse_args(argv)
     return args.fn(args)

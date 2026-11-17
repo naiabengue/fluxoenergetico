@@ -53,6 +53,7 @@ policy:
   max_news_per_day: 1
   auto_publish_news: false    # Fase 1: notícias com IA vão para revisão (pull request)
   auto_publish_data: true     # peças de dados (sem IA) publicam-se sozinhas se validarem
+  review_email_until: "2026-12-15"   # email diário às 8h30 com as notícias por rever (4 primeiras semanas)
   ai_label: "Texto redigido com apoio de inteligência artificial a partir das fontes indicadas."
   ai_label_reviewed: "Texto redigido com apoio de inteligência artificial e revisto pela redação antes da publicação."
 
