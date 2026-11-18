@@ -170,3 +170,14 @@ def test_external_clock_drives_time_critical_workflows():
     assert on(diario)["workflow_dispatch"]["inputs"]["catch_up"]["type"] == "boolean"
     run = next(s["run"] for s in diario["jobs"]["diario"]["steps"] if "fluxo daily" in s.get("run", ""))
     assert "inputs.catch_up" in run
+
+
+def test_clock_editor_default_function_never_dispatches():
+    """O editor do Apps Script escolhe por defeito a primeira função pública; correr essa
+    função por engano não pode lançar nenhum workflow."""
+    import re
+    src = (ROOT / "apps-script" / "relogio.gs").read_text(encoding="utf-8")
+    bodies = re.split(r"\n(?=function )", src)
+    public = [b for b in bodies if re.match(r"function [A-Za-z]+\(", b)]
+    first = public[0]
+    assert "dispatch_(" not in first, first.splitlines()[0]

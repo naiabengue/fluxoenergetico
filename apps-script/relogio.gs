@@ -11,6 +11,37 @@
  */
 const REPO = 'naiabengue/fluxoenergetico';
 
+// As duas primeiras funções são as que o editor escolhe por defeito: ambas são inofensivas
+// (instalar só recria os acionadores; testar só lê). As que lançam workflows vêm depois.
+
+/** Cria (ou recria) os acionadores diários. */
+function instalar() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  const at = function (fn, h, m) {
+    ScriptApp.newTrigger(fn).timeBased().atHour(h).nearMinute(m).everyDays(1).create();
+  };
+  at('diario', 6, 15);
+  at('diarioExtra', 7, 15);
+  at('diarioExtra', 7, 55);
+  at('emailRevisao', 8, 30);
+  at('instagram', 9, 40);
+  at('diarioExtra', 11, 15);
+  console.log('Acionadores: ' + ScriptApp.getProjectTriggers().length);
+}
+
+/** Confirma que o token funciona, sem lançar nenhum workflow. */
+function testar() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  const r = UrlFetchApp.fetch('https://api.github.com/repos/' + REPO + '/actions/workflows', {
+    muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }
+  });
+  console.log('GitHub: HTTP ' + r.getResponseCode());
+  if (r.getResponseCode() !== 200) throw new Error(r.getContentText().slice(0, 300));
+  console.log('Token OK: ' + JSON.parse(r.getContentText()).total_count + ' workflows visíveis. Fuso: ' +
+              Session.getScriptTimeZone());
+}
+
 function dispatch_(workflow, inputs) {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   if (!token) throw new Error('Falta a propriedade GITHUB_TOKEN');
@@ -55,32 +86,4 @@ function emailRevisao() {
 function instagram() {
   const d = weekday_();
   if (d === 2 || d === 5) dispatch_('instagram.yml', {});
-}
-
-/** Confirma que o token funciona, sem lançar nenhum workflow. */
-function testar() {
-  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  const r = UrlFetchApp.fetch('https://api.github.com/repos/' + REPO + '/actions/workflows', {
-    muteHttpExceptions: true,
-    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }
-  });
-  console.log('GitHub: HTTP ' + r.getResponseCode());
-  if (r.getResponseCode() !== 200) throw new Error(r.getContentText().slice(0, 300));
-  console.log('Token OK: ' + JSON.parse(r.getContentText()).total_count + ' workflows visíveis. Fuso: ' +
-              Session.getScriptTimeZone());
-}
-
-/** Cria (ou recria) os acionadores diários. */
-function instalar() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
-  const at = function (fn, h, m) {
-    ScriptApp.newTrigger(fn).timeBased().atHour(h).nearMinute(m).everyDays(1).create();
-  };
-  at('diario', 6, 15);
-  at('diarioExtra', 7, 15);
-  at('diarioExtra', 7, 55);
-  at('emailRevisao', 8, 30);
-  at('instagram', 9, 40);
-  at('diarioExtra', 11, 15);
-  console.log('Acionadores: ' + ScriptApp.getProjectTriggers().length);
 }
