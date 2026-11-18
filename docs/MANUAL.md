@@ -63,8 +63,15 @@ As imagens do carrossel são servidas pelo próprio site (`https://naiabengue.co
 **Modo manual (se a API não estiver configurada):** à terça e sexta o sistema prepara o carrossel (imagens 1080×1350 e `legenda.txt` em `content/instagram/`) e abre um aviso no GitHub. Para publicar: descarregar as imagens, abrir o Meta Business Suite (ou a app Instagram) → *Criar publicação* → carregar as imagens pela ordem → colar a legenda → **Agendar**.
 
 ### 1.5.1 Email diário de revisão (até 15/12/2026)
-Enquanto as notícias com IA passam por revisão, o workflow **Email de revisão** envia às 8h30 (Lisboa) um email com a ligação para cada notícia à espera (separador *Files changed* para ler; página do pedido para *Merge* ou *Close*). Sem notícias por rever, não envia nada. A data final está em `policy.review_email_until` (`config/editorial.yaml`); também deixa de enviar se `auto_publish_news` passar a `true`.
-Segredos: `SMTP_USER` (naiabengue@gmail.com), `SMTP_PASSWORD` (palavra-passe de app do Google: myaccount.google.com/apppasswords, exige verificação em dois passos) e `REVIEW_EMAIL_TO` (destino; fica em segredo porque o repositório é público). Para testar: *Actions → Email de revisão → Run workflow* (envia logo, sem esperar pelas 8h30).
+Enquanto as notícias com IA passam por revisão, o workflow **Email de revisão**, lançado às 8h30 pelo relógio externo (1.5.2), envia um email com a ligação para cada notícia à espera (separador *Files changed* para ler; página do pedido para *Merge* ou *Close*). Sem notícias por rever, não envia nada. A data final está em `policy.review_email_until` (`config/editorial.yaml`); também deixa de enviar se `auto_publish_news` passar a `true`.
+Segredos: `SMTP_USER` (naiabengue@gmail.com), `SMTP_PASSWORD` (palavra-passe de app do Google: myaccount.google.com/apppasswords, exige verificação em dois passos) e `REVIEW_EMAIL_TO` (destino; fica em segredo porque o repositório é público). Para testar: *Actions → Email de revisão → Run workflow* com a caixa *teste* marcada.
+
+### 1.5.2 Relógio externo (Google Apps Script)
+Os agendamentos do GitHub Actions chegaram com horas de atraso (17–18/11/2026). Os workflows com hora marcada são lançados pelo projeto Apps Script **Fluxo Energético — relógio** na conta naiabengue@gmail.com (script.google.com), com o código de `apps-script/relogio.gs`. Precisão: ±15 minutos.
+- 06:15 diário; 07:15, 07:55 e 11:15 tentativas extra (seg–sex; feriados tratados no código); 08:30 email de revisão; 09:40 Instagram (terça e sexta).
+- Propriedade do script `GITHUB_TOKEN`: token *fine-grained* do GitHub (conta naiabengue, só `fluxoenergetico`, *Actions: Read and write*). Expira ao fim de 1 ano: criar outro e substituir a propriedade.
+- O GitHub mantém só a reserva das 06:23 do diário (o limite diário impede duplicados). Auditoria (domingo) continua no GitHub.
+- Se algo falhar, a Google envia email à conta naiabengue com o erro; o registo fica em *Execuções* no editor do Apps Script.
 
 ### 1.6 Primeiro arranque
 1. *Actions → Auditoria das fontes → Run workflow*. Ver `docs/ESTADO-FONTES.md`: fontes com "sem itens" precisam de ajuste do `link_pattern` (secção 3.1).

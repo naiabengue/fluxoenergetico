@@ -156,3 +156,17 @@ def test_chart_end_label_is_not_clipped(tmp_path):
     img = mpimg.imread(png)
     right_edge = img[:, -4:, :3]
     assert right_edge.min() > 0.97, "o rótulo final do gráfico está cortado à direita"
+
+
+def test_external_clock_drives_time_critical_workflows():
+    """O Google Apps Script (naiabengue@gmail.com) dá as ordens; o GitHub não deve disparar estes por si
+    (os agendamentos do GitHub chegaram com 10 h de atraso e repetiriam emails e publicações)."""
+    wf = lambda n: yaml.safe_load((ROOT / ".github" / "workflows" / n).read_text())
+    on = lambda d: d.get("on") or d.get(True)
+    email, insta, diario = wf("email-revisao.yml"), wf("instagram.yml"), wf("diario.yml")
+    assert "schedule" not in on(email) and "schedule" not in on(insta)
+    assert on(email)["workflow_dispatch"]["inputs"]["teste"]["default"] is False
+    assert [c["cron"] for c in on(diario)["schedule"]] == ["23 6 * * *"]       # só a reserva da manhã
+    assert on(diario)["workflow_dispatch"]["inputs"]["catch_up"]["type"] == "boolean"
+    run = next(s["run"] for s in diario["jobs"]["diario"]["steps"] if "fluxo daily" in s.get("run", ""))
+    assert "inputs.catch_up" in run

@@ -1,8 +1,7 @@
 # Terça e sexta: prepara o carrossel do melhor artigo da semana; publica pela API se estiver ativa.
 name: Instagram
+# Lançado às 09:40 (±15 min) de terça e sexta pelo Google Apps Script em naiabengue@gmail.com (docs/MANUAL.md, 1.5.2).
 on:
-  schedule:
-    - cron: "41 9 * * 2,5"
   workflow_dispatch:
 permissions:
   contents: write

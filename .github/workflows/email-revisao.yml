@@ -1,16 +1,15 @@
-# Todos os dias às 8h30 (Lisboa): email com as notícias à espera de revisão, só até policy.review_email_until.
+# Email com as notícias à espera de revisão, só até policy.review_email_until.
 # Segredos: SMTP_USER (Gmail que envia), SMTP_PASSWORD (palavra-passe de app do Google), REVIEW_EMAIL_TO (destino).
 # O destino fica num segredo para não aparecer no repositório público.
 name: Email de revisão
+# Lançado às 08:30 (±15 min) pelo Google Apps Script em naiabengue@gmail.com (ver docs/MANUAL.md, 1.5.2).
 on:
-  schedule:
-    - cron: "12 8 * * *"      # 08:12 UTC = 08:12 em Lisboa no inverno; o passo espera até às 08:30
   workflow_dispatch:
     inputs:
       teste:
         description: "Enviar um email de teste mesmo sem notícias por rever"
         type: boolean
-        default: true
+        default: false
 permissions:
   contents: read
   pull-requests: read
@@ -29,4 +28,4 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
-        run: python -m fluxo notify-review ${{ github.event_name == 'schedule' && '--wait' || '' }} ${{ inputs.teste && '--test' || '' }}
+        run: python -m fluxo notify-review ${{ inputs.teste && '--test' || '' }}

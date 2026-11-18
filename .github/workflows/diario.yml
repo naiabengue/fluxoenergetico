@@ -2,17 +2,20 @@
 name: Diário
 on:
   schedule:
-    - cron: "23 6 * * *"          # 06:23 UTC (06:23 em Lisboa no inverno, 07:23 no verão)
-    # Dias úteis: tentativas extra só se ainda não houver notícia hoje (feriados de Lisboa tratados no código).
-    - cron: "23 7 * * 1-5"
-    - cron: "3 8 * * 1-5"         # antes do email das 8h30
-    - cron: "23 11 * * 1-5"       # último recurso
+    # Reserva: o relógio principal é o Google Apps Script em naiabengue@gmail.com (ver docs/MANUAL.md, 1.5.2),
+    # que lança este workflow às 06:15 e as tentativas extra dos dias úteis (07:15, 07:55, 11:15, ±15 min).
+    # Os agendamentos do GitHub chegaram com 10 h de atraso; se este disparar tarde, o limite diário evita duplicados.
+    - cron: "23 6 * * *"
   workflow_dispatch:
     inputs:
       data:
         description: "Forçar peças de dados (ex.: brent_fx,gas_storage)"
         required: false
         default: ""
+      catch_up:
+        description: "Tentativa extra: só procura notícia se ainda não houver nenhuma hoje"
+        type: boolean
+        default: false
 permissions:
   contents: write
   pull-requests: write
@@ -40,7 +43,7 @@ jobs:
           AGSI_API_KEY: ${{ secrets.AGSI_API_KEY }}
         run: |
           EXTRA=""
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "23 6 * * *" ]; then EXTRA="--catch-up"; fi
+          if [ "${{ inputs.catch_up }}" = "true" ]; then EXTRA="--catch-up"; fi
           python -m fluxo daily --drafts drafts --summary out/summary.json --data "${{ inputs.data }}" $EXTRA
           python -m fluxo status > /dev/null
       - name: Guardar dados e artigos publicados
