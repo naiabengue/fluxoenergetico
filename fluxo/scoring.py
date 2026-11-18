@@ -45,6 +45,16 @@ def categorise(text: str, editorial: dict[str, Any]) -> tuple[str | None, int]:
     return best, best_hits
 
 
+def energy_terms(editorial: dict[str, Any]) -> list[str]:
+    """Termos que provam relação com energia: as categorias marcadas «energy: true» e a lista energy_keywords.
+    As categorias genéricas (economia, regulação, dados) classificam, mas não provam que o tema é energia."""
+    terms = list(editorial.get("energy_keywords", []))
+    for cat in editorial["categories"].values():
+        if cat.get("energy"):
+            terms += cat["keywords"]
+    return terms
+
+
 def score(item: Item, source: Source, editorial: dict[str, Any], now: datetime) -> Score:
     sc = editorial["scoring"]
     w = sc["weights"]
@@ -59,7 +69,8 @@ def score(item: Item, source: Source, editorial: dict[str, Any], now: datetime) 
     if excluded(f"{item.title} {item.summary}", editorial.get("excluded_keywords", [])):
         blocked.append("tema excluído")
 
-    category, hits = categorise(text, editorial)
+    category, _ = categorise(text, editorial)
+    hits = _hits(text, energy_terms(editorial))
     energia = w["energia"] if hits >= 2 else (w["energia"] * 2 / 3 if hits == 1 else 0)
 
     credibilidade = min(source.tier, w["credibilidade"])

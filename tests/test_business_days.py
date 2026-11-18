@@ -90,3 +90,16 @@ def test_cli_catch_up_skips_data_pieces(project, monkeypatch):
         "data_pieces": {}, "llm": {}, "errors": []})
     assert cli.main(["daily", "--root", str(project), "--summary", "", "--catch-up"]) == 0
     assert seen["catch_up"] is True and seen["data_pieces"] == []
+
+
+def test_late_morning_run_respects_daily_news_limit(project, fixtures, tmp_path):
+    cfg = load_config(project)
+    _only(cfg, {"erse-comunicados"})
+    run_daily(cfg, FakeFetcher(fixtures), MONDAY, {"GEMINI_API_KEY": "k"}, tmp_path / "d",
+              post=_valid_llm_post, data_pieces=[])
+    post, calls = _counting(_valid_llm_post)
+    late = MONDAY.replace(hour=16)                       # o agendamento das 06:23 a disparar 10 h depois
+    summary = run_daily(cfg, FakeFetcher(fixtures), late, {"GEMINI_API_KEY": "k"}, tmp_path / "d2",
+                        post=post, data_pieces=[])
+    assert calls == [] and summary["review"] == []
+    assert summary["news"]["skipped"] == "já há notícia hoje"

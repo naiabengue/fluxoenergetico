@@ -74,3 +74,30 @@ def test_excluded_keywords_block_items(project):
     # «ense» dentro de outra palavra não bloqueia
     ok = score(_it("dgeg-destaques", "Licenses for intense expense in fuel supply in Portugal"), src, ed, NOW)
     assert "tema excluído" not in ok.blocked
+
+
+def test_monetary_policy_paper_is_not_energy(project):
+    from fluxo.config import load_config
+    from fluxo.scoring import score
+
+    cfg = load_config(project)
+    src = cfg.source("ecb-wp")
+    it = Item(id="x", source_id="ecb-wp", title="Monetary policy, capital market segmentation and innovation",
+              url="https://www.ecb.europa.eu/pub/pdf/scpwps/ecb.wp3311.en.pdf",
+              published=NOW.isoformat(), collected_at=NOW.isoformat(),
+              summary="We study how monetary policy affects firm innovation through financing constraints, "
+                      "investment and capital markets in the euro area.")
+    sc = score(it, src, cfg.editorial, NOW)
+    assert "sem relação com energia" in sc.blocked and sc.decision == "rejeitar"
+
+
+def test_energy_policy_still_counts(project):
+    from fluxo.config import load_config
+    from fluxo.scoring import score
+
+    cfg = load_config(project)
+    src = cfg.source("ecb-wp")
+    it = Item(id="y", source_id="ecb-wp", title="Energy prices and monetary policy in the euro area",
+              url="https://www.ecb.europa.eu/pub/x.pdf", published=NOW.isoformat(), collected_at=NOW.isoformat(),
+              summary="How the surge in natural gas and electricity prices shaped inflation.")
+    assert "sem relação com energia" not in score(it, src, cfg.editorial, NOW).blocked

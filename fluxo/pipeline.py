@@ -129,7 +129,8 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
     summary["news"] = {"candidates": len(candidates), "attempted": 0, "skipped": None, "business_day": business}
     already = _news_today(store, now.date().isoformat())
     has_llm = any(env.get(p.get("key_env", "")) for p in ed["llm"]["providers"])
-    if catch_up and already:
+    remaining = max(0, ed["policy"]["max_news_per_day"] - already)
+    if not remaining:                 # tentativa extra ou agendamento atrasado: o limite do dia já foi cumprido
         summary["news"]["skipped"] = "já há notícia hoje"
         candidates = []
     elif not has_llm:
@@ -140,7 +141,7 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
         else ed["llm"]["max_calls_per_run"]
     produced = 0
     for sc, it, src in candidates:
-        if produced >= ed["policy"]["max_news_per_day"] or llm.USAGE["calls"] >= max_calls:
+        if produced >= remaining or llm.USAGE["calls"] >= max_calls:
             break
         summary["news"]["attempted"] += 1
         resp = fetcher.get(it.url)

@@ -3,12 +3,15 @@
 categories:
   combustiveis-petroleo:
     name: Combustíveis e petróleo
+    energy: true
     keywords: [petróleo, petroleo, crude, brent, wti, combustíve, combustive, gasolina, gasóleo, gasoleo, diesel, gpl, glp, jet fuel, refinar, refinaria, opep, opec, oil, fuel, gasoline, petrol, reservas estratégicas, strategic stocks, emergency stocks, lubrificante, biocombust, biofuel, hvo, saf, introduções ao consumo]
   eletricidade-gas:
     name: Eletricidade e gás
+    energy: true
     keywords: [eletricidade, electricidade, elétric, electric, electricity, power price, gás natural, gas natural, natural gas, gnl, lng, tarifa, tariff, mibel, omie, armazenamento de gás, gas storage, rede elétrica, grid, interligação, interconnect, contadores, mercado liberalizado]
   renovaveis-transicao:
     name: Renováveis e transição
+    energy: true
     keywords: [renováve, renovave, renewable, solar, fotovolt, photovolt, eólic, eolic, wind, hidrogénio, hidrogenio, hydrogen, eficiência energética, energy efficiency, armazenamento de energia, battery, baterias, mobilidade elétrica, electric vehicle, descarboniz, decarbon, emissões, emissions, nuclear, biometano, biomethane, transição energética, energy transition]
   regulacao-politica:
     name: Regulação e política
@@ -19,6 +22,12 @@ categories:
   economia-investimento:
     name: Economia e investimento
     keywords: [investimento, investment, financiamento, financing, pib, gdp, empresas, companies, mercado de capitais, banco europeu, eib, bei, crescimento económico, economic growth]
+
+# Termos que, além das categorias com «energy: true», provam que um item é sobre energia
+# (as palavras de regulação, economia e dados sozinhas não chegam: «monetary policy» não é energia).
+energy_keywords: [energia, energy, energétic, energetic, política energética, energy policy, consumo de energia,
+                  energy consumption, balanço energético, energy balance, setor energético, energy sector,
+                  preços da energia, energy prices, adene, dgeg, entso-e, entsog]
 
 # Núcleo editorial do lançamento (as restantes categorias só entram com pontuação alta).
 core_categories: [combustiveis-petroleo, eletricidade-gas, renovaveis-transicao, regulacao-politica]
