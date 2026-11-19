@@ -44,6 +44,40 @@ def review_digest(prs: Iterable[dict[str, Any]], today: date) -> tuple[str, str]
     return subject, "\n".join(lines)
 
 
+def _lisbon_hhmm(iso: str) -> str:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(ZoneInfo("Europe/Lisbon")).strftime("%H:%M")
+
+
+def no_news_alert(today: date, last_run: dict[str, Any] | None, failed_runs: Iterable[dict[str, Any]],
+                  repo: str) -> tuple[str, str]:
+    """Aviso de dia útil sem notícia: o que a última execução encontrou e que execuções falharam."""
+    lines = ["Bom dia,", "", "Hoje é dia útil e ainda não há nenhuma notícia para rever.", ""]
+    if last_run:
+        n = last_run.get("news", {})
+        detail = f"{n.get('candidates', 0)} candidatos, {n.get('attempted', 0)} tentados"
+        if n.get("skipped"):
+            detail += f", {n['skipped']}"
+        lines.append(f"Última execução do diário ({_lisbon_hhmm(last_run['started'])}): {detail}.")
+        for r in last_run.get("rejected", []):
+            if r.get("kind") == "noticia":
+                lines.append(f"• Rejeitada: {r['title']} — {'; '.join(r.get('errors', [])) or 'sem motivo'}")
+        for e in last_run.get("errors", []):
+            lines.append(f"• Aviso: {e}")
+        lines.append("")
+    failed = list(failed_runs)
+    if failed:
+        lines.append("O diário falhou hoje:")
+        lines += [f"• {_lisbon_hhmm(r['created_at'])}: {r['html_url']}" for r in failed]
+        lines.append("")
+    lines += ["A tentativa automática das 11:15 volta a procurar; se abrir uma notícia, recebes outro email.",
+              f"Registo das execuções: https://github.com/{repo}/actions", "",
+              "— Fluxo Energético (mensagem automática)"]
+    return f"Fluxo Energético: ainda sem notícia hoje ({today:%d/%m/%Y})", "\n".join(lines)
+
+
 def send_email(subject: str, body: str, sender: str, password: str, to: str, smtp=smtplib.SMTP_SSL,
                host: str = "smtp.gmail.com", port: int = 465) -> None:
     msg = EmailMessage()

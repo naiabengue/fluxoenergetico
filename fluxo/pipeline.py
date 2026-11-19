@@ -61,7 +61,12 @@ def _build_piece(name: str, cfg: Config, fetcher, env: Mapping[str, str], now: d
 
 
 def _news_today(store: Store, today: str) -> int:
-    return sum(1 for v in store.processed().values()
+    return news_today(store.processed(), today)
+
+
+def news_today(processed: Mapping[str, Any], today: str) -> int:
+    """Notícias do dia já tratadas (publicadas ou enviadas para revisão)."""
+    return sum(1 for v in processed.values()
                if v.get("date") == today and v.get("decision") in ("publicar", "rever"))
 
 
@@ -175,7 +180,8 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
         elif decision == "rever":
             draft.ai["review"] = "pr"
             write_article(draft, drafts_dir, now)
-            summary["review"].append({"kind": "noticia", "title": draft.title, "source": it.url, "score": sc.total})
+            summary["review"].append({"kind": "noticia", "title": draft.title, "source": it.url, "score": sc.total,
+                                      "id": it.id})
             produced += 1
         else:
             summary["rejected"].append({"kind": "noticia", "title": draft.title, "errors": v.errors})

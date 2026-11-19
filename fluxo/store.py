@@ -110,6 +110,17 @@ class Store:
         data[item_id] = {"decision": decision, "date": when[:10]}
         self._save_state("processed", data)
 
+    def release_review(self, item_ids) -> list[str]:
+        """Esquece as decisões «rever» destes itens (o pedido de revisão não chegou a abrir), para que a
+        tentativa seguinte os volte a redigir. Outras decisões ficam como estão. Devolve os ids libertados."""
+        data = self.processed()
+        freed = [i for i in item_ids if data.get(i, {}).get("decision") == "rever"]
+        for i in freed:
+            del data[i]
+        if freed:
+            self._save_state("processed", data)
+        return freed
+
     def instagram_state(self) -> dict[str, Any]:
         return self._state("instagram")
 

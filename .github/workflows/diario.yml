@@ -19,6 +19,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write        # lançar o email de revisão quando o pedido abre depois das 8h30
 concurrency:
   group: pipeline
   cancel-in-progress: false
@@ -46,15 +47,21 @@ jobs:
           if [ "${{ inputs.catch_up }}" = "true" ]; then EXTRA="--catch-up"; fi
           python -m fluxo daily --drafts drafts --summary out/summary.json --data "${{ inputs.data }}" $EXTRA
           python -m fluxo status > /dev/null
+      # O GitHub recusa de vez em quando um envio sem motivo (19/11: «remote rejected … (failed)»).
+      # Cada envio tenta 3 vezes (espera 20 s e 40 s) antes de desistir.
       - name: Guardar dados e artigos publicados
         run: |
           git config user.name "fluxo-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data content docs/ESTADO.md
           git diff --cached --quiet || git commit -m "diário: $(date -u +%F)"
-          git pull --rebase --autostash origin main
-          git push
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            echo "::warning::Envio para main falhou (tentativa $i de 3)"; [ "$i" -lt 3 ] && sleep $((i * 20))
+          done
+          exit 1
       - name: Abrir pedido de revisão com os rascunhos
+        id: pr
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -64,14 +71,65 @@ jobs:
             cp -r drafts/content/. content/
             git add content
             git commit -m "rascunhos para revisão: $(date -u +%F)"
-            git push -u origin "$BR"
+            pushed=""
+            for i in 1 2 3; do
+              git push -u origin "$BR" && pushed=1 && break
+              echo "::warning::Envio do ramo $BR falhou (tentativa $i de 3)"; [ "$i" -lt 3 ] && sleep $((i * 20))
+            done
+            [ -n "$pushed" ] || exit 1
             python .github/scripts/pr_body.py out/summary.json > out/pr.md
-            gh pr create --base main --head "$BR" --title "Revisão $(date -u +%F)" --body-file out/pr.md
+            for i in 1 2 3; do
+              # uma tentativa anterior pode ter aberto o pedido apesar de responder com erro
+              open=$(gh api "repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:$BR&state=open" \
+                     --jq length 2>/dev/null || echo 0)
+              if [ "${open:-0}" -gt 0 ]; then echo "opened=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+              gh pr create --base main --head "$BR" --title "Revisão $(date -u +%F)" --body-file out/pr.md \
+                && echo "opened=true" >> "$GITHUB_OUTPUT" && exit 0
+              echo "::warning::Abertura do pedido de revisão falhou (tentativa $i de 3)"; [ "$i" -lt 3 ] && sleep $((i * 20))
+            done
+            exit 1
           else
             echo "Sem rascunhos para revisão."
           fi
+      # Se mesmo assim o pedido não abrir: guarda os rascunhos e liberta a notícia do dia, para que a
+      # tentativa extra seguinte (07:15, 07:55 ou 11:15) a volte a escrever em vez de dizer «já há notícia hoje».
+      - name: Guardar os rascunhos (o pedido de revisão não abriu)
+        if: failure() && steps.pr.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rascunhos-${{ github.run_id }}
+          path: drafts/
+          retention-days: 14
+      - name: Libertar a notícia do dia para a tentativa seguinte
+        if: failure() && steps.pr.outcome == 'failure'
+        run: |
+          git switch main
+          python -m fluxo release-review --summary out/summary.json
+          git add data/state
+          git diff --cached --quiet && exit 0
+          git commit -m "estado: liberta a notícia do dia (o pedido de revisão não abriu)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            [ "$i" -lt 3 ] && sleep $((i * 20))
+          done
+          exit 1
+      # O email das 8h30 só vê os pedidos abertos até lá. Se este abriu depois de o email do dia já ter
+      # corrido (tentativa das 11:15, por exemplo), lança-o outra vez.
+      - name: Avisar por email (pedido aberto depois do email do dia)
+        if: steps.pr.outputs.opened == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ran=$(gh api -X GET "repos/${{ github.repository }}/actions/workflows/email-revisao.yml/runs" \
+                -f created=">=$(date -u +%F)" -f per_page=1 --jq '.total_count')
+          if [ "${ran:-0}" -gt 0 ]; then
+            gh workflow run email-revisao.yml --ref main && echo "Email de revisão lançado."
+          else
+            echo "O email das 8h30 ainda não correu hoje: vai incluir este pedido."
+          fi
   publicar:
     needs: diario
+    if: ${{ !cancelled() }}    # publica o que já ficou em main mesmo que o pedido de revisão falhe
     uses: ./.github/workflows/publicar.yml
     permissions:
       contents: read

@@ -187,18 +187,21 @@ def cmd_notify_review(args) -> int:
     if missing := [k for k in need if not os.environ.get(k)]:
         print("Sem configuração de email (" + ", ".join(missing) + "): nada a enviar.")
         return 0
-    r = requests.get(f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/pulls",
-                     params={"state": "open", "per_page": 50}, timeout=30,
-                     headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
-                              "Accept": "application/vnd.github+json"})
+    repo = os.environ["GITHUB_REPOSITORY"]
+    headers = {"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}", "Accept": "application/vnd.github+json"}
+    r = requests.get(f"https://api.github.com/repos/{repo}/pulls",
+                     params={"state": "open", "per_page": 50}, timeout=30, headers=headers)
     r.raise_for_status()
     digest = review_digest(r.json(), today)
+    if digest is None and not args.test:
+        digest = _no_news_digest(args.root, repo, headers)
     if digest is None and args.test:
         until = cfg.editorial["policy"].get("review_email_until", "—")
         digest = (f"Fluxo Energético: teste do aviso de revisão ({today:%d/%m/%Y})",
                   "Teste: o aviso diário está configurado.\n\nTodos os dias às 8h30 (Lisboa), até "
                   f"{until}, recebes aqui a ligação para cada notícia à espera de revisão. "
-                  "Nos dias sem notícias por rever não há email.\n\n— Fluxo Energético (mensagem automática)")
+                  "Se um dia útil ficar sem notícia, recebes um aviso com o motivo; ao fim de semana, "
+                  "sem notícias por rever, não há email.\n\n— Fluxo Energético (mensagem automática)")
     if digest is None:
         print("Nenhuma notícia à espera de revisão: sem email hoje.")
         return 0
@@ -206,6 +209,50 @@ def cmd_notify_review(args) -> int:
         time.sleep(seconds_until(_now(), args.at))
     notify.send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], os.environ["REVIEW_EMAIL_TO"])
     print(f"Email enviado: {digest[0]}")
+    return 0
+
+
+def _no_news_digest(root: str, repo: str, headers: dict[str, str]) -> tuple[str, str] | None:
+    """Num dia útil sem notícia publicada nem enviada para revisão, um aviso com o motivo; senão None."""
+    from .calendar_pt import is_business_day, lisbon_date
+    from .notify import no_news_alert
+    from .pipeline import news_today
+    from .store import Store
+
+    now = _now()
+    today = lisbon_date(now)
+    store = Store(root)
+    if not is_business_day(today) or news_today(store.processed(), now.date().isoformat()):
+        return None
+    runs_today = [r for r in store.runs(limit=10) if lisbon_date(datetime.fromisoformat(r["started"])) == today]
+    failed: list[dict] = []
+    try:
+        r = requests.get(f"https://api.github.com/repos/{repo}/actions/workflows/diario.yml/runs",
+                         params={"created": f">={today.isoformat()}", "per_page": 20}, timeout=30, headers=headers)
+        r.raise_for_status()
+        failed = sorted((w for w in r.json().get("workflow_runs", []) if w.get("conclusion") == "failure"),
+                        key=lambda w: w["created_at"])
+    except requests.RequestException as e:      # o aviso segue na mesma, só sem as ligações
+        print(f"Não foi possível ler as execuções do diário: {e}")
+    return no_news_alert(today, runs_today[-1] if runs_today else None, failed, repo)
+
+
+def cmd_release_review(args) -> int:
+    """O pedido de revisão não abriu: liberta as notícias do dia para a tentativa seguinte as voltar a redigir."""
+    from .store import Store
+
+    path = Path(args.summary)
+    if not path.exists():
+        print("Sem resumo da execução: nada a libertar.")
+        return 0
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    ids = [r["id"] for r in summary.get("review", []) if r.get("id")]
+    freed = Store(args.root).release_review(ids)
+    titles = {r.get("id"): r["title"] for r in summary.get("review", [])}
+    for i in freed:
+        print(f"Libertada para a tentativa seguinte: {titles.get(i, i)}")
+    if not freed:
+        print("Nada a libertar.")
     return 0
 
 
@@ -255,6 +302,9 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--wait", action="store_true", help="esperar pela hora local indicada em --at")
     n.add_argument("--at", default="08:30")
     n.add_argument("--test", action="store_true", help="enviar um email de teste mesmo sem notícias por rever")
+    rr = add("release-review", cmd_release_review,
+             "o pedido de revisão não abriu: libertar a notícia do dia para a tentativa seguinte")
+    rr.add_argument("--summary", default="out/summary.json")
     add("status", cmd_status, "resumo das últimas execuções")
     args = p.parse_args(argv)
     return args.fn(args)
