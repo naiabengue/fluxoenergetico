@@ -1,4 +1,8 @@
 {
+ "0870f9894c1d8316": {
+  "date": "2026-11-20",
+  "decision": "rever"
+ },
  "29041d9d2ca7e0f4": {
   "date": "2026-11-17",
   "decision": "rejeitado: fonte inacessível ou curta"
@@ -58,5 +62,9 @@
  "e2b13e6d2c78ef45": {
   "date": "2026-11-18",
   "decision": "rever"
+ },
+ "f2797420c1bea77b": {
+  "date": "2026-11-20",
+  "decision": "rejeitado: fonte inacessível ou curta"
  }
 }
