@@ -1,6 +1,7 @@
-# Aprovar ou rejeitar uma notícia a partir do email (botão na página de aprovação do Google Apps Script).
+# Aprovar, modificar ou rejeitar uma notícia a partir do email (página /aprovar/ do site → Google Apps Script).
 # A página lança este workflow com o número do pedido e o código do email; o código é confirmado contra o hash
-# guardado no pedido antes de qualquer alteração. Aprovar = squash merge + publicar o site.
+# guardado no pedido antes de qualquer alteração. Aprovar = squash merge + publicar o site. Modificar = gravar no
+# ramo do pedido o título, a entrada, os pontos-chave e o texto alterados na página, e depois aprovar.
 # O merge feito com o token do workflow não lança «Publicar site» sozinho (regra do GitHub), por isso é chamado aqui.
 name: Aprovar notícia
 run-name: "${{ inputs.acao }} #${{ inputs.pr }}"    # a página de aprovação procura a execução por este nome
@@ -14,10 +15,14 @@ on:
         description: "Código do email de revisão"
         required: true
       acao:
-        description: "aprovar ou rejeitar"
+        description: "aprovar, modificar ou rejeitar"
         type: choice
-        options: [aprovar, rejeitar]
+        options: [aprovar, modificar, rejeitar]
         default: aprovar
+      edicao:
+        description: "Só para modificar: alterações em JSON, codificadas em base64"
+        required: false
+        default: ""
 permissions:
   contents: write
   pull-requests: write
@@ -41,6 +46,7 @@ jobs:
           APPROVE_TOKEN: ${{ inputs.token }}
           PR: ${{ inputs.pr }}
           ACAO: ${{ inputs.acao }}
+          APPROVE_EDIT: ${{ inputs.edicao }}
         run: python -m fluxo review-decision --pr "$PR" --action "$ACAO"
   publicar:
     needs: decidir

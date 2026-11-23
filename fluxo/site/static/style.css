@@ -104,3 +104,12 @@ main.wrap { padding-top: 1.75rem; padding-bottom: 3rem; }
 .ap-nao { background: #fff; color: #a3261b; border-color: var(--line) !important; }
 .ap-msg { flex-basis: 100%; margin: 0; font-weight: 600; color: var(--ink); }
 .ap-erro { color: #a3261b; }
+.ap-mod { background: #fff; color: var(--link); }
+.ap-campos { border: 0; margin: 0 0 1rem; padding: 0; }
+.ap-campos legend { font: 600 1.1rem/1.3 var(--sans); color: var(--ink); margin-bottom: .5rem; }
+.ap-campos label { display: block; font-weight: 600; color: var(--ink); margin: 1rem 0 .3rem; }
+.ap-campos input, .ap-campos textarea { width: 100%; font: 1rem/1.5 var(--sans); padding: .6rem .7rem;
+  border: 2px solid var(--line); border-radius: 4px; color: var(--text); }
+.ap-campos textarea[name=body] { font: .92rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.ap-campos input:focus, .ap-campos textarea:focus { border-color: var(--link); outline: none; }
+#ap-decisao { margin-bottom: 1rem; }

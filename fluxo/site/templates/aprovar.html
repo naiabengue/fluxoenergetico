@@ -3,21 +3,33 @@
 {% block head %}<meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">{% endblock %}
 {% block content %}
-<h1 class="page-title">Rever notícia</h1>
+<h1 class="page-title" id="ap-h1">Rever notícia</h1>
 <div id="aprovacao" class="ap" data-api="{{ policy.approve_api }}" data-repo="{{ policy.approve_repo }}"
      data-site="{{ base }}/">
   <p class="small" id="ap-estado">A carregar…</p>
-  <div id="ap-artigos"></div>
   <div id="ap-decisao" hidden>
-    <p class="notice notice-ai">Antes de aprovar: os números e as datas batem certo com a fonte indicada no fim?
-      Nenhuma conclusão vai além do que a fonte diz? O título não exagera?</p>
+    <p class="notice notice-ai" id="ap-lembrete">Antes de aprovar: os números e as datas batem certo com a fonte
+      indicada no fim? Nenhuma conclusão vai além do que a fonte diz? O título não exagera?</p>
     <div class="ap-acoes">
       <button type="button" class="ap-ok" id="ap-aprovar">Aprovar e publicar</button>
+      <button type="button" class="ap-mod" id="ap-modificar">Modificar</button>
       <button type="button" class="ap-nao" id="ap-rejeitar">Rejeitar</button>
       <p class="ap-msg" id="ap-msg" role="status" aria-live="polite"></p>
     </div>
   </div>
+  <div id="ap-artigos"></div>
+  <form id="ap-editar" hidden novalidate>
+    <div id="ap-campos"></div>
+    <p class="notice notice-ai">As fontes, a data e o endereço do artigo ficam iguais. Confirma que o que alteras
+      continua a bater certo com a fonte.</p>
+    <div class="ap-acoes">
+      <button type="submit" class="ap-ok" id="ap-guardar">Guardar e publicar</button>
+      <button type="button" class="ap-mod" id="ap-voltar">Voltar sem alterar</button>
+      <p class="ap-msg" id="ap-msg-ed" role="status" aria-live="polite"></p>
+    </div>
+  </form>
   <noscript><p>Esta página precisa de JavaScript.</p></noscript>
 </div>
+<script src="{{ prefix }}/static/frontmatter.js"></script>
 <script src="{{ prefix }}/static/aprovar.js"></script>
 {% endblock %}

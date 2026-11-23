@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import smtplib
+from html import escape
 from datetime import date
 from email.message import EmailMessage
 from typing import Any, Iterable
@@ -45,19 +46,101 @@ def review_digest(prs: Iterable[dict[str, Any]], today: date,
         for t in titles:
             lines.append(f"• {t}")
         if pr["number"] in links:
-            lines += [f"  Ler e aprovar (sem entrar no GitHub): {links[pr['number']]}",
-                      f"  O mesmo no GitHub: {pr['html_url']}/files", ""]
+            link = links[pr["number"]]
+            lines += [f"  Aprovar: {link}&acao=aprovar", f"  Modificar: {link}&modo=editar",
+                      f"  Rejeitar: {link}&acao=rejeitar", f"  No GitHub: {pr['html_url']}/files", ""]
         else:
             lines += [f"  Ler o texto: {pr['html_url']}/files",
                       f"  Aprovar (Merge) ou rejeitar (Close): {pr['html_url']}", ""]
     if links:
-        lines += ["Como validar: confirmar números e datas na fonte indicada no fim do texto. Na página, "
-                  "«Aprovar e publicar» põe o artigo no site em 1–2 minutos; «Rejeitar» fecha o pedido sem publicar."]
+        lines += ["Como validar: confirmar números e datas na fonte indicada no fim do texto. Aprovar e Rejeitar "
+                  "abrem uma página para confirmares com um clique; Modificar abre o texto para corrigires antes de "
+                  "publicar. O artigo fica no site em 1–2 minutos."]
     else:
         lines += ["Como validar: confirmar números e datas na fonte indicada no fim do texto; se estiver bem, "
                   "«Merge pull request» → «Confirm merge» e o artigo fica publicado em 1–2 minutos."]
     lines += ["", "— Fluxo Energético (mensagem automática)"]
     return subject, "\n".join(lines)
+
+
+# ── Versão HTML do email de revisão: o texto da notícia e os botões Aprovar / Modificar / Rejeitar ────────────
+INK, LINK, AMBER, MUTED, PANEL, LINE, RED = "#10324a", "#1f6f63", "#e2a01c", "#5a6872", "#eef3f1", "#d5dfdb", "#a3261b"
+SANS, SERIF = "Arial,Helvetica,sans-serif", "Georgia,'Times New Roman',serif"
+
+
+def _button(href: str, label: str, fg: str, bg: str, border: str) -> str:
+    return (f'<td style="background:{bg};border:2px solid {border};border-radius:4px">'
+            f'<a href="{escape(href)}" style="display:inline-block;padding:11px 16px;font:bold 15px {SANS};'
+            f'color:{fg};text-decoration:none">{label}</a></td><td style="width:8px">&nbsp;</td>')
+
+
+def _buttons(link: str) -> str:
+    return ('<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr>'
+            + _button(f"{link}&acao=aprovar", "&#10003; Aprovar e publicar", "#ffffff", LINK, LINK)
+            + _button(f"{link}&modo=editar", "&#9998; Modificar", LINK, "#ffffff", LINK)
+            + _button(f"{link}&acao=rejeitar", "&#10005; Rejeitar", RED, "#ffffff", LINE)
+            + "</tr></table>")
+
+
+def _body_html(md: str) -> str:
+    import markdown
+
+    html = markdown.markdown(escape(md, quote=False))
+    return (html.replace("<h2>", f'<h2 style="font:bold 18px/1.3 {SERIF};color:{INK};margin:20px 0 6px">')
+                .replace("<h3>", f'<h3 style="font:bold 16px/1.3 {SANS};color:{INK};margin:16px 0 4px">')
+                .replace("<p>", '<p style="margin:0 0 12px">'))
+
+
+def review_html(prs: Iterable[dict[str, Any]], today: date, links: dict[int, str],
+                articles: dict[int, list[dict[str, Any]]]) -> str:
+    """Email em HTML: cada notícia com título, entrada, pontos-chave, texto, fonte e os três botões."""
+    blocks, n = [], 0
+    for pr in review_prs(prs):
+        link = links.get(pr["number"])
+        arts = articles.get(pr["number"]) or [{"title": t, "lead": "", "key_points": [], "body": "", "sources": []}
+                                              for t in RE_TITLE.findall(pr.get("body") or "") or [pr["title"]]]
+        for a in arts:
+            n += 1
+            kp = "".join(f"<li>{escape(p)}</li>" for p in a.get("key_points") or [])
+            src = " · ".join(f'<a href="{escape(str(s.get("url", "")))}" style="color:{LINK}">{escape(str(s.get("name", "fonte")))}</a>'
+                             + (f" ({escape(str(s['date']))})" if s.get("date") else "") for s in a.get("sources") or [])
+            score = f" · pontuação {a['score']}" if a.get("score") else ""
+            actions = _buttons(link) if link else (
+                f'<p><a href="{escape(pr["html_url"])}" style="color:{LINK}">Aprovar (Merge) ou rejeitar (Close) no GitHub</a></p>')
+            blocks.append(
+                f'<tr><td style="padding:24px 24px 4px;font:15px/1.6 {SANS};color:#24323d">'
+                f'<p style="margin:0 0 6px;font:12px {SANS};color:{MUTED};text-transform:uppercase;letter-spacing:.04em">'
+                f'Por rever · pedido #{pr["number"]}{score}</p>'
+                f'<h2 style="margin:0 0 10px;font:bold 22px/1.25 {SERIF};color:{INK}">{escape(a["title"])}</h2>'
+                + (f'<p style="margin:0 0 14px;font-size:16px;line-height:1.5;color:{INK}">{escape(a["lead"])}</p>' if a.get("lead") else "")
+                + actions
+                + (f'<div style="background:{PANEL};border-left:3px solid {AMBER};padding:10px 14px;margin:0 0 16px">'
+                   f'<p style="margin:0 0 4px;font-weight:bold;font-size:14px;color:{INK}">Pontos-chave</p>'
+                   f'<ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.5">{kp}</ul></div>' if kp else "")
+                + (_body_html(a["body"]) if a.get("body") else "")
+                + (f'<p style="margin:12px 0 16px;font-size:13px;color:{MUTED}">Fonte: {src}</p>' if src else "")
+                + (actions if link and a.get("body") else "")
+                + f'<p style="margin:0 0 8px;font-size:12px"><a href="{escape(pr["html_url"])}/files" style="color:{MUTED}">Ver no GitHub</a></p>'
+                + f'</td></tr><tr><td style="padding:0 24px"><div style="border-top:1px solid {LINE}"></div></td></tr>')
+    head = f"{n} notícia{'s' if n != 1 else ''} à espera da tua revisão · {today:%d/%m/%Y}"
+    return (f'<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+            f'<body style="margin:0;padding:0;background:#f3f5f4">'
+            f'<div style="display:none;max-height:0;overflow:hidden">{escape(head)}</div>'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f4">'
+            f'<tr><td align="center" style="padding:20px 10px">'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            f'style="max-width:640px;background:#ffffff;border:1px solid {LINE};border-radius:6px">'
+            f'<tr><td style="padding:20px 24px 4px;font:bold 22px {SERIF};color:{INK}">Fluxo Energético</td></tr>'
+            f'<tr><td style="padding:0 24px 16px;font:14px {SANS};color:{MUTED}">{escape(head)}</td></tr>'
+            f'<tr><td style="height:3px;background:{AMBER};font-size:0;line-height:0">&nbsp;</td></tr>'
+            + "".join(blocks)
+            + f'<tr><td style="padding:16px 24px 24px;font:12px/1.5 {SANS};color:{MUTED}">«Aprovar» e «Rejeitar» abrem '
+              f'uma página para confirmares com um clique (assim, os antivírus que abrem as ligações dos emails não '
+              f'decidem por ti). «Modificar» abre o título, a entrada, os pontos-chave e o texto para corrigires antes '
+              f'de publicar. Antes de aprovar: os números e as datas batem certo com a fonte?<br><br>'
+              f'— Fluxo Energético (mensagem automática)</td></tr>'
+            f'</table></td></tr></table></body></html>')
 
 
 def _lisbon_hhmm(iso: str) -> str:
@@ -105,11 +188,13 @@ def recipients(to: str, cc: Iterable[str] | None = None) -> list[str]:
 
 
 def send_email(subject: str, body: str, sender: str, password: str, to: str | list[str], smtp=smtplib.SMTP_SSL,
-               host: str = "smtp.gmail.com", port: int = 465) -> None:
+               host: str = "smtp.gmail.com", port: int = 465, html: str | None = None) -> None:
     msg = EmailMessage()
     to = ", ".join(to) if isinstance(to, list) else to
     msg["Subject"], msg["From"], msg["To"] = subject, f"Fluxo Energético <{sender}>", to
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     with smtp(host, port, timeout=30) as s:
         s.login(sender, password)
         s.send_message(msg)

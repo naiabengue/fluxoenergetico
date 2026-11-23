@@ -185,5 +185,6 @@ def test_approval_page_is_built_hidden_from_search_and_configured(project, tmp_p
     assert 'content="noindex, nofollow"' in html
     assert 'data-api="https://script.google.com/macros/s/X/exec"' in html
     assert 'data-repo="naiabengue/fluxoenergetico"' in html and "static/aprovar.js" in html
-    assert (out / "static" / "aprovar.js").exists()
+    assert (out / "static" / "aprovar.js").exists() and (out / "static" / "frontmatter.js").exists()
+    assert html.index("frontmatter.js") < html.index("aprovar.js")
     assert "/aprovar/" not in (out / "sitemap.xml").read_text(encoding="utf-8")

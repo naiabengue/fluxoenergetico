@@ -194,11 +194,13 @@ def cmd_notify_review(args) -> int:
     r.raise_for_status()
     prs = notify.review_prs(r.json())
     links: dict[int, str] = {}
+    html = None
     policy = cfg.editorial["policy"]
     if prs and policy.get("approve_url"):
-        from .review import issue_links
+        from .review import fetch_articles, issue_links
 
         links = issue_links(prs, policy["approve_url"], repo, headers)
+        html = notify.review_html(prs, today, links, fetch_articles(prs, repo, headers))
     digest = review_digest(prs, today, links)
     if digest is None and not args.test:
         digest = _no_news_digest(args.root, repo, headers)
@@ -215,7 +217,9 @@ def cmd_notify_review(args) -> int:
     if args.wait:
         time.sleep(seconds_until(_now(), args.at))
     to = notify.recipients(os.environ["REVIEW_EMAIL_TO"], policy.get("review_email_cc"))
-    notify.send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], to)
+    if html and digest[0].startswith("Fluxo Energético: teste"):
+        html = None                                    # o teste sem notícias leva só texto
+    notify.send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], to, html=html)
     print(f"Email enviado para {len(to)} endereço(s): {digest[0]}"
           + (f" | {len(links)} com botão de aprovação" if links else ""))
     return 0
@@ -229,12 +233,22 @@ def cmd_review_decision(args) -> int:
     print(f"::add-mask::{token}" if token else "Sem código.")
     repo = os.environ["GITHUB_REPOSITORY"]
     headers = {"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}", "Accept": "application/vnd.github+json"}
+    edits = None
+    if args.action == "modificar":
+        import base64
+
+        try:
+            edits = json.loads(base64.b64decode(os.environ.get("APPROVE_EDIT", "")).decode("utf-8"))["artigos"]
+        except (ValueError, KeyError, TypeError) as e:
+            print(f"::error::Pedido #{args.pr} não alterado: alteração ilegível ({e})")
+            return 1
     try:
-        result = decide(repo, int(args.pr), token, args.action, headers)
+        result = decide(repo, int(args.pr), token, args.action, headers, edits=edits)
     except (Refused, ValueError) as e:
         print(f"::error::Pedido #{args.pr} não alterado: {e}")
         return 1
-    print(f"Pedido #{args.pr}: {'aprovado e integrado' if result == 'merged' else 'rejeitado e fechado'}.")
+    done = {"aprovar": "aprovado e integrado", "modificar": "alterado, aprovado e integrado"}
+    print(f"Pedido #{args.pr}: {done.get(args.action, 'rejeitado e fechado')}.")
     if out := os.environ.get("GITHUB_OUTPUT"):
         with open(out, "a", encoding="utf-8") as f:
             f.write(f"merged={'true' if result == 'merged' else 'false'}\n")
@@ -332,9 +346,10 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--at", default="08:30")
     n.add_argument("--test", action="store_true", help="enviar um email de teste mesmo sem notícias por rever")
     rd = add("review-decision", cmd_review_decision,
-             "aprovar (merge) ou rejeitar um pedido de revisão; o código vem em APPROVE_TOKEN")
+             "aprovar (merge), modificar e aprovar, ou rejeitar um pedido de revisão; código em APPROVE_TOKEN, "
+             "alterações em APPROVE_EDIT (JSON em base64)")
     rd.add_argument("--pr", required=True)
-    rd.add_argument("--action", choices=["aprovar", "rejeitar"], default="aprovar")
+    rd.add_argument("--action", choices=["aprovar", "rejeitar", "modificar"], default="aprovar")
     rr = add("release-review", cmd_release_review,
              "o pedido de revisão não abriu: libertar a notícia do dia para a tentativa seguinte")
     rr.add_argument("--summary", default="out/summary.json")

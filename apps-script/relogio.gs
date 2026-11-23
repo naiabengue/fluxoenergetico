@@ -72,7 +72,9 @@ function dispatch_(workflow, inputs) {
   if (r.getResponseCode() !== 204) {
     throw new Error(workflow + ': HTTP ' + r.getResponseCode() + ' ' + r.getContentText().slice(0, 300));
   }
-  console.log('Lançado ' + workflow + ' ' + JSON.stringify(inputs || {}, function (k, v) { return k === 'token' ? '…' : v; }));
+  console.log('Lançado ' + workflow + ' ' + JSON.stringify(inputs || {}, function (k, v) {
+    return k === 'token' || k === 'edicao' ? '…' : v;
+  }));
 }
 
 function weekday_() {
@@ -113,12 +115,12 @@ function doGet(e) {
   return json_({ ok: true, servico: 'Fluxo Energético — aprovação pelo email' });
 }
 
-/** POST {op: 'decidir', pr, t, acao} (corpo em texto simples). */
+/** POST {op: 'decidir', pr, t, acao, edicao?} (corpo em texto simples). acao: aprovar | modificar | rejeitar. */
 function doPost(e) {
   try {
     const d = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (d.op !== 'decidir') return json_({ ok: false, msg: 'Pedido desconhecido.' });
-    return json_(decidir(String(d.pr || ''), String(d.t || ''), String(d.acao || '')));
+    return json_(decidir(String(d.pr || ''), String(d.t || ''), String(d.acao || ''), d.edicao));
   } catch (err) {
     return json_({ ok: false, msg: 'Erro: ' + err.message });
   }
@@ -128,14 +130,20 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function decidir(pr, t, acao) {
-  if (acao !== 'aprovar' && acao !== 'rejeitar') return { ok: false, msg: 'Ação desconhecida.' };
+function decidir(pr, t, acao, edicao) {
+  if (['aprovar', 'rejeitar', 'modificar'].indexOf(acao) < 0) return { ok: false, msg: 'Ação desconhecida.' };
   const v = verificar_(pr, t);
   if (v.erro) return { ok: false, msg: v.erro };
+  const inputs = { pr: pr, token: t, acao: acao };
+  if (acao === 'modificar') {
+    if (!edicao || !Array.isArray(edicao.artigos) || !edicao.artigos.length) return { ok: false, msg: 'Nada para alterar.' };
+    inputs.edicao = Utilities.base64Encode(JSON.stringify({ artigos: edicao.artigos }), Utilities.Charset.UTF_8);
+    if (inputs.edicao.length > 60000) return { ok: false, msg: 'Texto demasiado longo para enviar daqui.' };
+  }
   const desde = new Date(Date.now() - 5000).toISOString();
-  dispatch_('aprovar.yml', { pr: pr, token: t, acao: acao });
-  return { ok: true, desde: desde,
-           msg: acao === 'aprovar' ? 'Aprovada. A publicar no site (1 a 3 minutos)…' : 'A rejeitar…' };
+  dispatch_('aprovar.yml', inputs);
+  return { ok: true, desde: desde, msg: { aprovar: 'Aprovada. A publicar no site (1 a 3 minutos)…',
+    modificar: 'Alterações enviadas. A gravar e publicar (1 a 3 minutos)…', rejeitar: 'A rejeitar…' }[acao] };
 }
 
 function estado(pr, acao, desde) {
@@ -148,8 +156,9 @@ function estado(pr, acao, desde) {
     .sort(function (a, b) { return a.created_at < b.created_at ? -1 : 1; })[0];
   if (!run || run.status !== 'completed') return { fim: false };
   if (run.conclusion === 'success') {
-    return { fim: true, ok: true, msg: acao === 'aprovar'
-      ? 'Publicada. Já está no site.' : 'Rejeitada: o pedido foi fechado e nada foi publicado.' };
+    return { fim: true, ok: true, msg: { aprovar: 'Publicada. Já está no site.',
+      modificar: 'Alterada e publicada. Já está no site.',
+      rejeitar: 'Rejeitada: o pedido foi fechado e nada foi publicado.' }[acao] };
   }
   return { fim: true, ok: false, msg: 'Não foi possível (' + run.conclusion + '). Detalhe: ' + run.html_url };
 }

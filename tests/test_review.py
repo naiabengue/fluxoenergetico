@@ -97,14 +97,16 @@ def test_refuses_without_touching_anything(pr, token, why):
 
 def test_unmergeable_request_is_reported():
     with pytest.raises(Refused, match="não conseguiu integrar"):
-        decide("o/r", 7, TOKEN, "aprovar", {}, http=FakeHTTP(_pr(), merge_status=405))
+        decide("o/r", 7, TOKEN, "aprovar", {}, http=FakeHTTP(_pr(), merge_status=405), wait=0)
 
 
 def test_digest_with_approval_link():
     subject, body = notify.review_digest([_pr()], dt.date(2026, 11, 23), {7: "https://script.example/exec?pr=7&t=x"})
     assert subject == "Fluxo Energético: 1 notícia para rever (23/11/2026)"
-    assert "Ler e aprovar (sem entrar no GitHub): https://script.example/exec?pr=7&t=x" in body
-    assert "https://github.com/o/r/pull/7/files" in body and "Aprovar e publicar" in body
+    assert "Aprovar: https://script.example/exec?pr=7&t=x&acao=aprovar" in body
+    assert "Modificar: https://script.example/exec?pr=7&t=x&modo=editar" in body
+    assert "Rejeitar: https://script.example/exec?pr=7&t=x&acao=rejeitar" in body
+    assert "https://github.com/o/r/pull/7/files" in body
 
 
 def test_recipients_adds_copy_without_duplicates():
@@ -129,14 +131,16 @@ def test_cli_email_carries_button_link_and_goes_to_both_addresses(project, monke
     monkeypatch.setattr(cli.requests, "get", lambda *a, **k: Resp([pr]))
     patched = []
     monkeypatch.setattr(review.requests, "patch", lambda url, **k: patched.append((url, k["json"])) or Resp({}))
-    sent = []
-    monkeypatch.setattr(notify, "send_email", lambda *a, **k: sent.append(a))
+    sent, sent_kw = [], []
+    monkeypatch.setattr(notify, "send_email", lambda *a, **k: sent.append(a) or sent_kw.append(k))
 
     assert cli.main(["notify-review", "--root", str(project)]) == 0
     (subject, body, _, _, to), = sent
+    html = sent_kw[0]["html"]
+    assert "Aprovar e publicar" in html and "Modificar" in html and "&amp;modo=editar" in html
     assert to == ["trabalho@exemplo.pt", "copia@gmail.com"]
-    link = next(line.split(": ", 1)[1] for line in body.splitlines() if "sem entrar no GitHub" in line)
-    token = link.split("t=", 1)[1]
+    link = next(line.split(": ", 1)[1] for line in body.splitlines() if line.strip().startswith("Aprovar:"))
+    token = link.split("t=", 1)[1].split("&", 1)[0]
     (url, data), = patched
     assert url.endswith("/pulls/7") and hashes(data["body"]) == [token_hash(token)] and token not in data["body"]
     assert "1 com botão de aprovação" in capsys.readouterr().out
@@ -147,7 +151,7 @@ def test_cli_decision_writes_output_for_publishing(monkeypatch, tmp_path):
     for k, v in {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t", "APPROVE_TOKEN": TOKEN,
                  "GITHUB_OUTPUT": str(out)}.items():
         monkeypatch.setenv(k, v)
-    monkeypatch.setattr(review, "decide", lambda repo, n, t, a, h: decide(repo, n, t, a, h, http=FakeHTTP(_pr())))
+    monkeypatch.setattr(review, "decide", lambda repo, n, t, a, h, **k: decide(repo, n, t, a, h, http=FakeHTTP(_pr()), **k))
     assert cli.main(["review-decision", "--pr", "7", "--action", "aprovar"]) == 0
     assert out.read_text() == "merged=true\n"
     monkeypatch.setenv("APPROVE_TOKEN", "errado_errado_errado_errado")
@@ -159,3 +163,127 @@ def test_marker_found_even_with_text_after_it():
     assert hashes(body) == [token_hash(TOKEN)]
     body = add_hash(body, "c" * 64)                         # volta a ficar um só marcador, no fim
     assert body.count("<!--") == 1 and hashes(body) == [token_hash(TOKEN), "c" * 64] and "Rodapé" in body
+
+
+ARTICLE = """---
+title: Armazenamento de gás natural nos Estados Unidos encerra época de injeção acima
+  do normal
+slug: armazenamento-de-gas
+date: '2026-11-21'
+type: noticia
+lead: As reservas terminaram acima da média.
+key_points:
+- Um ponto.
+- Outro ponto com 3,0%.
+sources:
+- name: EIA
+  url: https://www.eia.gov/x
+  date: '2026-11-18'
+ai:
+  used: true
+  review: pr
+---
+
+## O que aconteceu
+""" + "Texto original. " * 20 + "\n"
+
+EDIT = {"ficheiro": "content/articles/2026/11/armazenamento-de-gas.md", "title": "Reservas de gás dos EUA acima da média: 3 810 mil milhões de pés³",
+        "lead": "  As reservas   terminaram a época acima da média de cinco anos. ",
+        "key_points": ["Ponto novo.", "", "  Segundo ponto  "], "body": "## O que aconteceu\n\n" + "Texto corrigido. " * 20}
+
+
+def test_apply_edit_changes_only_the_editable_fields():
+    import yaml as y
+
+    from fluxo.review import apply_edit, split
+
+    new = apply_edit(ARTICLE, EDIT)
+    meta, body = split(new)
+    assert meta["title"] == EDIT["title"] and meta["lead"] == "As reservas terminaram a época acima da média de cinco anos."
+    assert meta["key_points"] == ["Ponto novo.", "Segundo ponto"]
+    assert meta["slug"] == "armazenamento-de-gas" and meta["sources"][0]["name"] == "EIA" and meta["ai"]["review"] == "pr"
+    assert body.startswith("## O que aconteceu") and "Texto corrigido." in body and "Texto original" not in body
+    assert y.safe_load(new.split("---\n")[1])["title"] == EDIT["title"]
+
+
+@pytest.mark.parametrize("change,why", [({"body": "curto"}, "body"), ({"title": "x"}, "title"),
+                                        ({"key_points": ["a"] * 9}, "até 8"), ({"lead": None}, "falta")])
+def test_apply_edit_refuses_bad_input(change, why):
+    from fluxo.review import apply_edit
+
+    with pytest.raises(Refused, match=why):
+        apply_edit(ARTICLE, dict(EDIT, **change))
+
+
+class EditHTTP(FakeHTTP):
+    def get(self, url, **kw):
+        self.calls.append(("GET", url, kw.get("params")))
+        if url.endswith("/files"):
+            return Resp([{"filename": EDIT["ficheiro"], "status": "added"}, {"filename": "data/x.json", "status": "added"}])
+        if "/contents/" in url:
+            import base64
+
+            return Resp({"sha": "blob1", "content": base64.b64encode(ARTICLE.encode()).decode()})
+        return Resp(self.pr)
+
+    def put(self, url, **kw):
+        self.calls.append(("PUT", url, kw.get("json")))
+        if "/contents/" in url:
+            return Resp({"commit": {"sha": "novo123"}})
+        return Resp({"merged": True})
+
+
+def test_modify_commits_to_the_review_branch_then_merges_that_commit():
+    import base64
+
+    http = EditHTTP(_pr())
+    assert decide("o/r", 7, TOKEN, "modificar", {}, http=http, edits=[EDIT]) == "merged"
+    puts = [c for c in http.calls if c[0] == "PUT"]
+    assert puts[0][1].endswith("/contents/" + EDIT["ficheiro"]) and puts[0][2]["branch"] == "revisao/2026-11-21-0618"
+    assert puts[0][2]["sha"] == "blob1" and "Texto corrigido." in base64.b64decode(puts[0][2]["content"]).decode()
+    assert puts[1][1].endswith("/pulls/7/merge") and puts[1][2]["sha"] == "novo123"
+    assert "Alterada" in puts[1][2]["commit_message"]
+
+
+def test_modify_refuses_files_outside_the_request_and_wrong_codes():
+    http = EditHTTP(_pr())
+    with pytest.raises(Refused, match="fora deste pedido"):
+        decide("o/r", 7, TOKEN, "modificar", {}, http=http, edits=[dict(EDIT, ficheiro="config/editorial.yaml")])
+    assert not [c for c in http.calls if c[0] == "PUT"]
+    http = EditHTTP(_pr())
+    with pytest.raises(Refused, match="não corresponde"):
+        decide("o/r", 7, "Xyz_def-1234567890123456789012", "modificar", {}, http=http, edits=[EDIT])
+    assert [c[0] for c in http.calls] == ["GET"]
+
+
+def test_html_email_shows_the_article_and_three_buttons():
+    pr = _pr()
+    arts = {7: [{"title": "Título <b>", "lead": "Entrada & mais", "key_points": ["Um 3%"], "body": "## Contexto\n\nTexto <script>x</script>.",
+                 "sources": [{"name": "EIA", "url": "https://www.eia.gov/x", "date": "2026-11-18"}], "score": 77}]}
+    html = notify.review_html([pr], dt.date(2026, 11, 23), {7: "https://site/aprovar/?pr=7&t=abc"}, arts)
+    assert "Título &lt;b&gt;" in html and "Entrada &amp; mais" in html and "<script>" not in html
+    assert html.count("&amp;acao=aprovar") == 2 and html.count("&amp;modo=editar") == 2      # botões em cima e em baixo
+    assert "&amp;acao=rejeitar" in html and "Pontos-chave" in html and "Contexto</h2>" in html and "pontuação 77" in html
+
+
+def test_send_email_with_html_alternative():
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, msg):
+            sent["types"] = [p.get_content_type() for p in msg.iter_parts()]
+
+    notify.send_email("A", "texto", "a@gmail.com", "p", ["b@x.pt"], smtp=FakeSMTP, html="<p>olá</p>")
+    assert sent["types"] == ["text/plain", "text/html"]
