@@ -1,5 +1,5 @@
 ---
-title: 'Teste do botão Modificar: título original que vai ser alterado'
+title: 'Teste do botão Modificar: título ALTERADO na página do email'
 slug: teste-botao-modificar
 date: '2026-11-23'
 datetime: 2026-11-23T10:50+00:00
@@ -9,8 +9,9 @@ tags:
 - teste
 lead: Artigo de teste para o circuito de edição pelo email; não é publicado no site.
 key_points:
-- Ponto original um.
+- Ponto alterado na página.
 - 'Ponto original dois: 3,0%.'
+- 'Ponto novo: três.'
 sources:
 - name: Teste
   url: https://naiabengue.com/
