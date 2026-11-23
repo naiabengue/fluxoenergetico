@@ -15,7 +15,7 @@ from urllib.parse import urlencode
 
 import requests
 
-MARK = re.compile(r"\n*<!--\s*aprovar:([0-9a-f\s]*)-->\s*$")
+MARK = re.compile(r"\n*<!--\s*aprovar:([0-9a-f\s]*)-->[ \t]*")   # em qualquer ponto da descrição
 RE_TOKEN = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 KEEP = 20          # códigos aceites por pedido (um por email; os emails antigos continuam a funcionar)
 API = "https://api.github.com/repos/{repo}"

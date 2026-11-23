@@ -170,7 +170,7 @@ function verificar_(pr, t) {
   if (String(p.head.ref).indexOf('revisao/') !== 0) return { erro: 'Este pedido não é uma notícia para rever.' };
   if (p.merged_at) return { erro: 'Esta notícia já foi aprovada e publicada.' };
   if (p.state !== 'open') return { erro: 'Esta notícia já foi rejeitada (pedido fechado).' };
-  const m = /<!--\s*aprovar:([0-9a-f\s]*)-->\s*$/.exec(p.body || '');
+  const m = /<!--\s*aprovar:([0-9a-f\s]*)-->/.exec(p.body || '');
   if (!m || m[1].trim().split(/\s+/).indexOf(sha256hex_(t)) < 0) {
     return { erro: 'Esta ligação não corresponde a esta notícia. Usa a ligação do email.' };
   }

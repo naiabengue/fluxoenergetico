@@ -152,3 +152,10 @@ def test_cli_decision_writes_output_for_publishing(monkeypatch, tmp_path):
     assert out.read_text() == "merged=true\n"
     monkeypatch.setenv("APPROVE_TOKEN", "errado_errado_errado_errado")
     assert cli.main(["review-decision", "--pr", "7"]) == 1
+
+
+def test_marker_found_even_with_text_after_it():
+    body = add_hash(BODY, token_hash(TOKEN)) + "\n_Rodapé acrescentado por outra ferramenta_\n"
+    assert hashes(body) == [token_hash(TOKEN)]
+    body = add_hash(body, "c" * 64)                         # volta a ficar um só marcador, no fim
+    assert body.count("<!--") == 1 and hashes(body) == [token_hash(TOKEN), "c" * 64] and "Rodapé" in body

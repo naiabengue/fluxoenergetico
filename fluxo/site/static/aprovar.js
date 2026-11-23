@@ -71,7 +71,7 @@
     if (String(p.head.ref).indexOf('revisao/') !== 0) { linha('Este pedido não é uma notícia para rever.'); return; }
     if (p.merged_at) { linha('Esta notícia já foi aprovada e publicada.', SITE, 'Abrir o site'); return; }
     if (p.state !== 'open') { linha('Esta notícia já foi rejeitada (pedido fechado).'); return; }
-    var m = /<!--\s*aprovar:([0-9a-f\s]*)-->\s*$/.exec(p.body || '');
+    var m = /<!--\s*aprovar:([0-9a-f\s]*)-->/.exec(p.body || '');
     return sha256hex(t).then(function (h) {
       if (!m || m[1].trim().split(/\s+/).indexOf(h) < 0) {
         linha('Esta ligação não corresponde a esta notícia. Usa a ligação do email.');
