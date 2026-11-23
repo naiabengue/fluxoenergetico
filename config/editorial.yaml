@@ -70,7 +70,7 @@ policy:
   # (vazio: o email só traz ligações do GitHub). approve_api: aplicação Web do Apps Script que recebe a decisão
   # e lança o workflow «Aprovar notícia». approve_repo: repositório onde estão os pedidos de revisão.
   approve_url: "https://naiabengue.com/fluxoenergetico/news/aprovar/"
-  approve_api: "https://script.google.com/macros/s/AKfycbzWfxPFGOvE_xfMUa_z-r8la2qQlQiJTQrMJMGTMytCqF6YS6yVK-3XmqB6nnW2oEN-/exec"
+  approve_api: "https://script.google.com/macros/s/AKfycbw2OutFlooMkDL79p2mTvAyLd3jaKQKB-CwzXFKH4i27fXovEvpzH_zu9eN1mjW_hGM/exec"
   approve_repo: "naiabengue/fluxoenergetico"
   ai_label: "Texto redigido com apoio de inteligência artificial a partir das fontes indicadas."
   ai_label_reviewed: "Texto redigido com apoio de inteligência artificial e revisto pela redação antes da publicação."
