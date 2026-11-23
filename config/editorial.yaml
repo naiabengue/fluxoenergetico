@@ -66,9 +66,12 @@ policy:
   review_email_until: "2026-12-15"   # email diário às 8h30 com as notícias por rever (4 primeiras semanas)
   # Cópia do email de revisão (além do segredo REVIEW_EMAIL_TO): o email do trabalho filtrava os avisos sem devolver erro.
   review_email_cc: ["pedrocamiloramos@gmail.com"]
-  # Página de aprovação (Google Apps Script, apps-script/relogio.gs → implementação «Aplicação Web»).
-  # Vazio: o email só traz ligações do GitHub (aprovar com Merge).
+  # Aprovar pelo email (docs/MANUAL.md, 1.5.3). approve_url: página do site para onde aponta o botão do email
+  # (vazio: o email só traz ligações do GitHub). approve_api: aplicação Web do Apps Script que recebe a decisão
+  # e lança o workflow «Aprovar notícia». approve_repo: repositório onde estão os pedidos de revisão.
   approve_url: ""
+  approve_api: "https://script.google.com/macros/s/AKfycbz1hUtzWJJ_HjP-wdLyU-DZkS1hFvE0_J-HS07ldVFfY8qHz0LhxINyv2_DAIZeM4AK/exec"
+  approve_repo: "naiabengue/fluxoenergetico"
   ai_label: "Texto redigido com apoio de inteligência artificial a partir das fontes indicadas."
   ai_label_reviewed: "Texto redigido com apoio de inteligência artificial e revisto pela redação antes da publicação."
 

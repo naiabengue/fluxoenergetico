@@ -174,3 +174,16 @@ def test_cli_build_subdir(project):
     assert main(["build", "--root", str(project), "--out", str(project / "_site"), "--subdir", "news"]) == 0
     assert (project / "_site" / "news" / "sobre" / "index.html").exists()
     assert "url=/fluxoenergetico/news/" in (project / "_site" / "index.html").read_text()
+
+
+def test_approval_page_is_built_hidden_from_search_and_configured(project, tmp_path):
+    cfg = load_config(project)
+    cfg.editorial["policy"]["approve_api"] = "https://script.google.com/macros/s/X/exec"
+    out = tmp_path / "site"
+    build_site(cfg, out)
+    html = (out / "aprovar" / "index.html").read_text(encoding="utf-8")
+    assert 'content="noindex, nofollow"' in html
+    assert 'data-api="https://script.google.com/macros/s/X/exec"' in html
+    assert 'data-repo="naiabengue/fluxoenergetico"' in html and "static/aprovar.js" in html
+    assert (out / "static" / "aprovar.js").exists()
+    assert "/aprovar/" not in (out / "sitemap.xml").read_text(encoding="utf-8")

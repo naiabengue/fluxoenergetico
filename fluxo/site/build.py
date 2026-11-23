@@ -134,6 +134,8 @@ def build_site(cfg: Config, out: Path) -> dict[str, Any]:
     page("sources.html", "fontes/index.html", bee=bee, extra=extra, canonical=f"{base}/fontes/")
     page("about.html", "sobre/index.html", policy=policy, canonical=f"{base}/sobre/")
     page("privacy.html", "privacidade/index.html", canonical=f"{base}/privacidade/")
+    # Página de aprovação do email de revisão (fora do sitemap e com noindex).
+    page("aprovar.html", "aprovar/index.html", policy=policy, canonical=f"{base}/aprovar/")
     page("404.html", "404.html", canonical=base + "/")
 
     # Pesquisa, RSS, sitemap, robots

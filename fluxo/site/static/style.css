@@ -90,3 +90,17 @@ main.wrap { padding-top: 1.75rem; padding-bottom: 3rem; }
   .wordmark { font-size: 1.6rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+/* Página de aprovação (/aprovar/) */
+.ap-titulo { font: 600 1.3rem/1.3 var(--serif); color: var(--ink); margin: 1.5rem 0 .5rem; }
+.ap-texto { white-space: pre-wrap; word-wrap: break-word; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: .9rem 1rem; font: .9rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.ap-acoes { position: sticky; bottom: 0; background: #fff; border-top: 3px solid var(--ink); padding: .9rem 0 1rem;
+  display: flex; flex-wrap: wrap; gap: .75rem; }
+.ap-acoes button { font: 600 1rem/1 var(--sans); padding: .85rem 1.25rem; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--link); }
+.ap-acoes button:disabled { opacity: .5; cursor: default; }
+.ap-ok { background: var(--link); color: #fff; }
+.ap-nao { background: #fff; color: #a3261b; border-color: var(--line) !important; }
+.ap-msg { flex-basis: 100%; margin: 0; font-weight: 600; color: var(--ink); }
+.ap-erro { color: #a3261b; }

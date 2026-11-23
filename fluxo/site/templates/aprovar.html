@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Rever notícia | {{ site.title }}{% endblock %}
+{% block head %}<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">{% endblock %}
+{% block content %}
+<h1 class="page-title">Rever notícia</h1>
+<div id="aprovacao" class="ap" data-api="{{ policy.approve_api }}" data-repo="{{ policy.approve_repo }}"
+     data-site="{{ base }}/">
+  <p class="small" id="ap-estado">A carregar…</p>
+  <div id="ap-artigos"></div>
+  <div id="ap-decisao" hidden>
+    <p class="notice notice-ai">Antes de aprovar: os números e as datas batem certo com a fonte indicada no fim?
+      Nenhuma conclusão vai além do que a fonte diz? O título não exagera?</p>
+    <div class="ap-acoes">
+      <button type="button" class="ap-ok" id="ap-aprovar">Aprovar e publicar</button>
+      <button type="button" class="ap-nao" id="ap-rejeitar">Rejeitar</button>
+      <p class="ap-msg" id="ap-msg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+  <noscript><p>Esta página precisa de JavaScript.</p></noscript>
+</div>
+<script src="{{ prefix }}/static/aprovar.js"></script>
+{% endblock %}

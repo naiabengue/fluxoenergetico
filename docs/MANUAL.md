@@ -73,12 +73,13 @@ Os agendamentos do GitHub Actions chegaram com horas de atraso (17–18/11/2026)
 - O GitHub mantém só a reserva das 06:23 do diário (o limite diário impede duplicados). Auditoria (domingo) continua no GitHub.
 - Se algo falhar, a Google envia email à conta naiabengue com o erro; o registo fica em *Execuções* no editor do Apps Script.
 
-### 1.5.3 Página de aprovação (botão do email)
-O mesmo projeto Apps Script serve uma página (implementação «Aplicação Web», executar como naiabengue, acesso: qualquer pessoa). O endereço `/exec` está em `policy.approve_url`.
-- Cada email gera, por pedido de revisão, um código aleatório que só existe na ligação do email; no pedido fica apenas o SHA-256 desse código (comentário invisível no fim da descrição). Os códigos dos últimos 20 emails continuam válidos.
-- Abrir a página não altera nada (os antivírus do email abrem as ligações sozinhos). Mostra o texto do artigo e dois botões. **Aprovar e publicar** lança o workflow *Aprovar notícia* (`aprovar.yml`), que volta a confirmar o código, faz *squash merge*, apaga o ramo e publica o site; a página espera pelo fim e diz «Publicada». **Rejeitar** (pede confirmação) comenta, fecha o pedido e apaga o ramo.
+### 1.5.3 Aprovar pelo email (botão «Ler e aprovar»)
+- **Página:** `https://naiabengue.com/fluxoenergetico/news/aprovar/?pr=N&t=CÓDIGO` (`policy.approve_url`; modelo `fluxo/site/templates/aprovar.html`, código `fluxo/site/static/aprovar.js`). Lê o pedido na API pública do GitHub, mostra o texto do artigo e confirma o código. Tem `noindex` e não entra no sitemap.
+- **Código:** cada email gera, por pedido de revisão, um código aleatório que só existe na ligação do email; no pedido fica apenas o SHA-256 desse código (comentário invisível no fim da descrição). Os códigos dos últimos 20 emails continuam válidos.
+- **Botões:** abrir a página não altera nada (os antivírus do email abrem as ligações sozinhos). **Aprovar e publicar** e **Rejeitar** (pede confirmação) enviam a decisão para a aplicação Web do Apps Script (`policy.approve_api`, mesmo projeto do relógio, executa como naiabengue, acesso: qualquer pessoa). O Apps Script confirma o código e lança o workflow *Aprovar notícia* (`aprovar.yml`), que volta a confirmar, faz *squash merge* (ou comenta e fecha), apaga o ramo e publica o site. A página acompanha a execução e diz «Publicada».
+- **Porque a página não está no Apps Script:** as páginas do Apps Script dão erro 404 («não é possível abrir o ficheiro») quando o browser tem várias contas Google abertas. A página do site fala com o Apps Script sem cookies, o que evita esse erro.
 - O merge feito pelo workflow não lança *Publicar site* sozinho (regra do GitHub para o token dos workflows); por isso *Aprovar notícia* chama-o no fim.
-- Depois de alterar `relogio.gs`: *Implementar → Gerir implementações → editar → Versão: nova versão*. O endereço mantém-se.
+- Depois de alterar `relogio.gs`: *Implantar → Gerenciar implantações → editar → Versão: nova versão*. O endereço mantém-se.
 
 ### 1.6 Primeiro arranque
 1. *Actions → Auditoria das fontes → Run workflow*. Ver `docs/ESTADO-FONTES.md`: fontes com "sem itens" precisam de ajuste do `link_pattern` (secção 3.1).
