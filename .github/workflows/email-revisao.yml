@@ -1,6 +1,6 @@
 # Email com as notícias à espera de revisão, só até policy.review_email_until.
 # Segredos: SMTP_USER (Gmail que envia), SMTP_PASSWORD (palavra-passe de app do Google), REVIEW_EMAIL_TO (destino).
-# O destino fica num segredo para não aparecer no repositório público.
+# O destino fica num segredo para não aparecer no repositório público; a cópia está em policy.review_email_cc.
 name: Email de revisão
 # Lançado às 08:30 (±15 min) pelo Google Apps Script em naiabengue@gmail.com (ver docs/MANUAL.md, 1.5.2).
 on:
@@ -12,7 +12,7 @@ on:
         default: false
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write    # grava no pedido o hash do código de aprovação enviado no email
 jobs:
   avisar:
     runs-on: ubuntu-latest

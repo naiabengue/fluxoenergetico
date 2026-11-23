@@ -1,0 +1,52 @@
+# Aprovar ou rejeitar uma notícia a partir do email (botão na página de aprovação do Google Apps Script).
+# A página lança este workflow com o número do pedido e o código do email; o código é confirmado contra o hash
+# guardado no pedido antes de qualquer alteração. Aprovar = squash merge + publicar o site.
+# O merge feito com o token do workflow não lança «Publicar site» sozinho (regra do GitHub), por isso é chamado aqui.
+name: Aprovar notícia
+run-name: "${{ inputs.acao }} #${{ inputs.pr }}"    # a página de aprovação procura a execução por este nome
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Número do pedido de revisão"
+        required: true
+      token:
+        description: "Código do email de revisão"
+        required: true
+      acao:
+        description: "aprovar ou rejeitar"
+        type: choice
+        options: [aprovar, rejeitar]
+        default: aprovar
+permissions:
+  contents: write
+  pull-requests: write
+# Sem grupo de concorrência: aprovar vários pedidos seguidos não pode cancelar os que estão à espera.
+jobs:
+  decidir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      merged: ${{ steps.decisao.outputs.merged }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - id: decisao
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          APPROVE_TOKEN: ${{ inputs.token }}
+          PR: ${{ inputs.pr }}
+          ACAO: ${{ inputs.acao }}
+        run: python -m fluxo review-decision --pr "$PR" --action "$ACAO"
+  publicar:
+    needs: decidir
+    if: needs.decidir.outputs.merged == 'true'
+    uses: ./.github/workflows/publicar.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

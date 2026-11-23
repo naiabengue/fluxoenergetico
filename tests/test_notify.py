@@ -106,4 +106,5 @@ def test_cli_test_mode_sends_even_without_reviews(project, monkeypatch, capsys):
     sent = []
     monkeypatch.setattr(notify, "send_email", lambda *a, **k: sent.append(a))
     assert cli.main(["notify-review", "--root", str(project), "--test"]) == 0
-    assert sent and sent[0][0].startswith("Fluxo Energético: teste") and sent[0][4] == "b@exemplo.pt"
+    assert sent and sent[0][0].startswith("Fluxo Energético: teste")
+    assert sent[0][4] == ["b@exemplo.pt", "pedrocamiloramos@gmail.com"]     # destino do segredo + cópia (policy)

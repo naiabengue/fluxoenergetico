@@ -192,7 +192,14 @@ def cmd_notify_review(args) -> int:
     r = requests.get(f"https://api.github.com/repos/{repo}/pulls",
                      params={"state": "open", "per_page": 50}, timeout=30, headers=headers)
     r.raise_for_status()
-    digest = review_digest(r.json(), today)
+    prs = notify.review_prs(r.json())
+    links: dict[int, str] = {}
+    policy = cfg.editorial["policy"]
+    if prs and policy.get("approve_url"):
+        from .review import issue_links
+
+        links = issue_links(prs, policy["approve_url"], repo, headers)
+    digest = review_digest(prs, today, links)
     if digest is None and not args.test:
         digest = _no_news_digest(args.root, repo, headers)
     if digest is None and args.test:
@@ -207,8 +214,30 @@ def cmd_notify_review(args) -> int:
         return 0
     if args.wait:
         time.sleep(seconds_until(_now(), args.at))
-    notify.send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], os.environ["REVIEW_EMAIL_TO"])
-    print(f"Email enviado: {digest[0]}")
+    to = notify.recipients(os.environ["REVIEW_EMAIL_TO"], policy.get("review_email_cc"))
+    notify.send_email(*digest, os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"], to)
+    print(f"Email enviado para {len(to)} endereço(s): {digest[0]}"
+          + (f" | {len(links)} com botão de aprovação" if links else ""))
+    return 0
+
+
+def cmd_review_decision(args) -> int:
+    """Lançado pela página de aprovação (Apps Script): confirma o código e faz merge ou fecha o pedido."""
+    from .review import Refused, decide
+
+    token = os.environ.get("APPROVE_TOKEN", "")
+    print(f"::add-mask::{token}" if token else "Sem código.")
+    repo = os.environ["GITHUB_REPOSITORY"]
+    headers = {"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}", "Accept": "application/vnd.github+json"}
+    try:
+        result = decide(repo, int(args.pr), token, args.action, headers)
+    except (Refused, ValueError) as e:
+        print(f"::error::Pedido #{args.pr} não alterado: {e}")
+        return 1
+    print(f"Pedido #{args.pr}: {'aprovado e integrado' if result == 'merged' else 'rejeitado e fechado'}.")
+    if out := os.environ.get("GITHUB_OUTPUT"):
+        with open(out, "a", encoding="utf-8") as f:
+            f.write(f"merged={'true' if result == 'merged' else 'false'}\n")
     return 0
 
 
@@ -302,6 +331,10 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--wait", action="store_true", help="esperar pela hora local indicada em --at")
     n.add_argument("--at", default="08:30")
     n.add_argument("--test", action="store_true", help="enviar um email de teste mesmo sem notícias por rever")
+    rd = add("review-decision", cmd_review_decision,
+             "aprovar (merge) ou rejeitar um pedido de revisão; o código vem em APPROVE_TOKEN")
+    rd.add_argument("--pr", required=True)
+    rd.add_argument("--action", choices=["aprovar", "rejeitar"], default="aprovar")
     rr = add("release-review", cmd_release_review,
              "o pedido de revisão não abriu: libertar a notícia do dia para a tentativa seguinte")
     rr.add_argument("--summary", default="out/summary.json")

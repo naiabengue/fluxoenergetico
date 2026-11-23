@@ -22,10 +22,18 @@ def email_due(editorial: dict[str, Any], today: date) -> bool:
     return today <= date.fromisoformat(str(until))
 
 
-def review_digest(prs: Iterable[dict[str, Any]], today: date) -> tuple[str, str] | None:
-    """Assunto e texto do email; None se não houver nada para rever."""
+def review_prs(prs: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Pedidos de revisão (ramos revisao/…), do mais antigo para o mais recente."""
+    return sorted(_review_prs(prs), key=lambda p: p["number"])
+
+
+def review_digest(prs: Iterable[dict[str, Any]], today: date,
+                  links: dict[int, str] | None = None) -> tuple[str, str] | None:
+    """Assunto e texto do email; None se não houver nada para rever.
+    links: {número do pedido: ligação para a página de aprovação}; sem ligação, aprova-se no GitHub."""
+    links = links or {}
     items = []
-    for pr in sorted(_review_prs(prs), key=lambda p: p["number"]):
+    for pr in review_prs(prs):
         titles = RE_TITLE.findall(pr.get("body") or "") or [pr["title"]]
         items.append((pr, titles))
     if not items:
@@ -36,11 +44,19 @@ def review_digest(prs: Iterable[dict[str, Any]], today: date) -> tuple[str, str]
     for pr, titles in items:
         for t in titles:
             lines.append(f"• {t}")
-        lines += [f"  Ler o texto: {pr['html_url']}/files",
-                  f"  Aprovar (Merge) ou rejeitar (Close): {pr['html_url']}", ""]
-    lines += ["Como validar: confirmar números e datas na fonte indicada no fim do texto; se estiver bem, "
-              "«Merge pull request» → «Confirm merge» e o artigo fica publicado em 1–2 minutos.",
-              "", "— Fluxo Energético (mensagem automática)"]
+        if pr["number"] in links:
+            lines += [f"  Ler e aprovar (sem entrar no GitHub): {links[pr['number']]}",
+                      f"  O mesmo no GitHub: {pr['html_url']}/files", ""]
+        else:
+            lines += [f"  Ler o texto: {pr['html_url']}/files",
+                      f"  Aprovar (Merge) ou rejeitar (Close): {pr['html_url']}", ""]
+    if links:
+        lines += ["Como validar: confirmar números e datas na fonte indicada no fim do texto. Na página, "
+                  "«Aprovar e publicar» põe o artigo no site em 1–2 minutos; «Rejeitar» fecha o pedido sem publicar."]
+    else:
+        lines += ["Como validar: confirmar números e datas na fonte indicada no fim do texto; se estiver bem, "
+                  "«Merge pull request» → «Confirm merge» e o artigo fica publicado em 1–2 minutos."]
+    lines += ["", "— Fluxo Energético (mensagem automática)"]
     return subject, "\n".join(lines)
 
 
@@ -78,9 +94,20 @@ def no_news_alert(today: date, last_run: dict[str, Any] | None, failed_runs: Ite
     return f"Fluxo Energético: ainda sem notícia hoje ({today:%d/%m/%Y})", "\n".join(lines)
 
 
-def send_email(subject: str, body: str, sender: str, password: str, to: str, smtp=smtplib.SMTP_SSL,
+def recipients(to: str, cc: Iterable[str] | None = None) -> list[str]:
+    """Destino principal (segredo REVIEW_EMAIL_TO, pode ter vários separados por vírgula) mais as cópias, sem repetidos."""
+    out: list[str] = []
+    for a in [*to.split(","), *(cc or [])]:
+        a = a.strip()
+        if a and a.lower() not in (x.lower() for x in out):
+            out.append(a)
+    return out
+
+
+def send_email(subject: str, body: str, sender: str, password: str, to: str | list[str], smtp=smtplib.SMTP_SSL,
                host: str = "smtp.gmail.com", port: int = 465) -> None:
     msg = EmailMessage()
+    to = ", ".join(to) if isinstance(to, list) else to
     msg["Subject"], msg["From"], msg["To"] = subject, f"Fluxo Energético <{sender}>", to
     msg.set_content(body)
     with smtp(host, port, timeout=30) as s:
