@@ -2,6 +2,7 @@
 
 | Início (UTC) | Novos | Fontes com erro | Publicados | Revisão | Rejeitados | Pedidos IA |
 | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-25T17:25 | 1 | oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 0 | 0 |
 | 2026-11-25T11:15 | 6 | oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 0 | 0 |
 | 2026-11-25T07:54 | 0 | ine-destaques, oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 0 | 0 |
 | 2026-11-25T07:11 | 0 | oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 0 | 0 |
@@ -15,4 +16,3 @@
 | 2026-11-23T11:15 | 4 | oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 1 | 1 | 1 |
 | 2026-11-23T07:54 | 0 | oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 0 | 0 |
 | 2026-11-23T07:11 | 0 | ine-destaques, oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 0 | 0 |
-| 2026-11-23T06:16 | 0 | ine-destaques, oecd-news, eib-press, eib-publications, oecd-reports, iea-news, irena | 0 | 0 | 1 | 0 |
