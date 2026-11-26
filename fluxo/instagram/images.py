@@ -65,9 +65,11 @@ VARIANTS = {
 
 BRIEF_SYSTEM = (
     "You are the art director of a Portuguese energy news account on Instagram. For each slide you write one short "
-    "scene description in English for an image model. Rules: describe only concrete physical things (energy "
-    "infrastructure, landscapes, industrial or everyday objects) that match that slide's topic; use a calm visual "
-    "metaphor when the topic is abstract; 12 to 40 words per scene; no people, faces or hands; no text, letters, "
+    "scene description in English for an image model. Rules: show the energy subject of that slide directly "
+    "(power plants, wind turbines, solar panels, dams, grids, pipelines, tankers, fuel stations, storage tanks, "
+    "factories, homes using energy); only when a slide has no physical energy subject (for example a cyberattack, a "
+    "law or a statistics method) use a calm metaphor that still contains an energy object; never use unrelated "
+    "objects such as jugs, lighthouses or flowers; 12 to 40 words per scene; no people, faces or hands; no text, letters, "
     "numbers, signs, screens, documents, charts or maps; no logos, brands, flags or real named places, buildings or "
     "companies; nothing violent or alarming; do not mention style, colours or what to avoid (that is added later). "
     "Make every scene different. Answer only with JSON: "
@@ -253,10 +255,12 @@ def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any
                 out.points[slot - 1] = im
             break
     # Para o carrossel não misturar diapositivos com e sem imagem: um ponto sem imagem reaproveita outra já aprovada.
+    # A capa (tema geral) vem primeiro, para não repetir a imagem do diapositivo ao lado.
     spare = [im for im in [out.cover, *out.points] if im is not None]
     if spare and cfg["slides"] != "cover":
         for i, im in enumerate(out.points):
             if im is None:
-                out.points[i] = spare[i % len(spare)]
-                out.log.append(f"ponto {i + 1}: sem imagem própria, reaproveita outra imagem aprovada")
+                out.points[i] = spare[0]
+                out.log.append(f"ponto {i + 1}: sem imagem própria, reaproveita a imagem da capa"
+                               if out.cover is not None else f"ponto {i + 1}: reaproveita outra imagem aprovada")
     return out
