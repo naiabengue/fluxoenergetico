@@ -292,3 +292,11 @@ def test_cli_carousel_uses_generated_images_and_caption_note(project, monkeypatc
     assert len(paths) == 6 and info["ai_images"] == 5 and info["brief"] == "ia"
     assert "Imagens geradas por IA." in caption
     assert (tmp_path / "c" / "legenda.txt").read_text(encoding="utf-8") == caption
+
+
+def test_cover_without_image_uses_first_point_image(project):
+    calls = []
+    no = {"ok": False, "problems": ["four blades"]}
+    llm, _ = fake_llm(verdicts=[no, no, no])          # capa recusada nas 3 tentativas; pontos aprovados
+    out = make_images(ART, 4, editorial(project, max_attempts=2), ENV, post=ok_post(calls), llm=llm)
+    assert out.cover is not None and out.cover is out.points[0] and out.count == 5

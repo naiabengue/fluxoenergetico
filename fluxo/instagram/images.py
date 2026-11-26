@@ -261,6 +261,12 @@ def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any
                 out.points[slot - 1] = im
             break
     # Para o carrossel não misturar diapositivos com e sem imagem: um ponto sem imagem reaproveita outra já aprovada.
+    # Capa sem imagem: usa a primeira imagem aprovada dos pontos (a capa nunca fica tipográfica entre imagens).
+    if out.cover is None and cfg["slides"] != "cover":
+        first = next((im for im in out.points if im is not None), None)
+        if first is not None:
+            out.cover = first
+            out.log.append("capa: sem imagem própria, usa a imagem do primeiro ponto com imagem")
     # A capa (tema geral) vem primeiro, para não repetir a imagem do diapositivo ao lado.
     spare = [im for im in [out.cover, *out.points] if im is not None]
     if spare and cfg["slides"] != "cover":
