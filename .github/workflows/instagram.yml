@@ -23,9 +23,14 @@ jobs:
       - run: pip install -r requirements.txt
       - id: prep
         env:
-          # Opcional: capa com imagem IA (Cloudflare Workers AI, plano gratuito). Sem estes segredos, capa tipográfica.
+          # Opcional: imagens IA consoante o tema (Cloudflare Workers AI, plano gratuito). Sem estes segredos,
+          # diapositivos tipográficos. A IA de texto escreve as cenas e verifica cada imagem.
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
         run: |
           python -m fluxo instagram | tee out.txt
           if grep -q "Carrossel preparado" out.txt; then echo "ready=true" >> "$GITHUB_OUTPUT"; fi

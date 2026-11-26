@@ -1,0 +1,72 @@
+# Gera um carrossel de teste com imagens IA, para comparar modelos. Não publica no Instagram, não mexe no estado
+# nem em main: o resultado fica no artefacto «carrossel-teste» e no ramo teste/carrossel-ia (substituído a cada
+# execução). Também corre a cada envio para um ramo instagram/… (testar alterações antes de as integrar).
+name: Instagram — teste de imagens
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Artigo (slug). Vazio = o melhor dos últimos 30 dias"
+        default: "energia-eolica-lidera-producao-renovavel-em-portugal-durante-o-mes-de-outubro"
+      modelo:
+        description: "Modelo de imagem"
+        type: choice
+        options: [ambos, flux-1-schnell, flux-2-klein-4b]
+        default: ambos
+  push:
+    branches: ["instagram/**"]
+permissions:
+  contents: write
+concurrency:
+  group: instagram-teste
+  cancel-in-progress: true
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Gerar carrosséis de teste
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          SLUG: ${{ github.event.inputs.slug || 'energia-eolica-lidera-producao-renovavel-em-portugal-durante-o-mes-de-outubro' }}
+          MODELO: ${{ github.event.inputs.modelo || 'ambos' }}
+        run: |
+          if [ -z "$CF_ACCOUNT_ID" ] || [ -z "$CF_API_TOKEN" ]; then
+            echo "::warning::Faltam os segredos CF_ACCOUNT_ID e CF_API_TOKEN: os diapositivos saem tipográficos."
+          fi
+          if [ "$MODELO" = "ambos" ]; then modelos="flux-1-schnell flux-2-klein-4b"; else modelos="$MODELO"; fi
+          {
+            echo "## Teste de imagens do carrossel"
+            echo
+            echo "Artigo: \`${SLUG:-melhor dos últimos 30 dias}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for m in $modelos; do
+            python -m fluxo instagram-preview --slug "$SLUG" --model "$m" --out "out/teste/$m" | tee "out-$m.txt"
+            { echo; echo "### $m"; echo '```'; cat "out-$m.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: carrossel-teste
+          path: out/teste
+      - name: Guardar no ramo teste/carrossel-ia (para ver as imagens no GitHub)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd out/teste
+          git init -q -b teste/carrossel-ia
+          git config user.name "fluxo-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "teste de imagens (${GITHUB_SHA::7}, execução ${GITHUB_RUN_ID})"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" teste/carrossel-ia
+          echo "Imagens: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/tree/teste/carrossel-ia" >> "$GITHUB_STEP_SUMMARY"

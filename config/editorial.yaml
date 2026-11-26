@@ -138,6 +138,15 @@ instagram:
   cta_caption: "Guarda esta publicação para consultar mais tarde e diz-nos nos comentários o que pensas."
   cta_slide: "Guarda e partilha"
   cover_hint: "Desliza para ver os números →"
-  # Capa com imagem gerada por IA (Cloudflare Workers AI, plano gratuito). Só funciona com CF_ACCOUNT_ID e
-  # CF_API_TOKEN nos segredos; sem eles, ou se o pedido falhar, usa a capa tipográfica.
-  ai_cover: true
+  # Imagens geradas por IA consoante o tema (Cloudflare Workers AI, plano gratuito: 10 000 neurons/dia).
+  # Só funciona com CF_ACCOUNT_ID e CF_API_TOKEN nos segredos; sem eles, ou se um pedido falhar, o diapositivo
+  # fica tipográfico. As cenas são escritas pela IA de texto (llm) e cada imagem é verificada por ela.
+  ai_images:
+    enabled: true
+    slides: all                # all = capa e pontos-chave; cover = só a capa
+    model: flux-1-schnell      # ou flux-2-klein-4b (comparar com o workflow «Instagram — teste de imagens»)
+    steps: 8                   # schnell: 1–8 (≈96 neurons por imagem com 8)
+    size: 1024                 # klein: lado da imagem quadrada (≈104 neurons com 1024)
+    max_attempts: 2            # por diapositivo, quando a verificação recusa a imagem
+    max_generations: 14        # teto por carrossel (≈1 400 neurons no pior caso)
+    check: true                # a IA de texto vê cada imagem: recusa letras, pessoas, bandeiras, logótipos, mapas

@@ -16,7 +16,7 @@ Um só fornecedor (GitHub), um só idioma (Python), dados em ficheiros de texto 
 | Publicação | `fluxo/publish.py` | `content/articles/AAAA/MM/<slug>.md`, gráficos em `content/media/` |
 | Revisão humana | pull request diário `revisao/AAAA-MM-DD` | ramo do pull request |
 | Site | `fluxo/site/build.py` + Jinja2 → GitHub Pages (`publicar.yml`) | `_site/` (gerado, não versionado) |
-| Instagram | `fluxo/instagram` (seleção, legenda, carrossel JPEG, API) | `content/instagram/`, `data/state/instagram.json` |
+| Instagram | `fluxo/instagram` (seleção, legenda, imagens IA por tema em `images.py`, carrossel JPEG, API) | `content/instagram/`, `data/state/instagram.json` |
 | Monitorização | `data/runs/AAAA-MM.jsonl`, `docs/ESTADO.md`, `docs/ESTADO-FONTES.md`, avisos (issues) | repositório |
 
 ## Regras que o código garante
@@ -26,6 +26,7 @@ Um só fornecedor (GitHub), um só idioma (Python), dados em ficheiros de texto 
 3. Nenhum artigo sai sem: fonte com ligação, texto da fonte recuperado (≥ 200 caracteres), todos os números presentes na fonte, nenhuma sequência de 12 palavras copiada, factos com evidência literal, título e corpo dentro dos limites, e sem repetir um artigo dos últimos 30 dias.
 4. Sem chave de IA, o sistema continua: publica peças de dados e não publica notícias.
 5. Texto com IA leva sempre rótulo visível; diz "revisto" apenas quando entrou por pull request aprovado.
+   Imagem gerada por IA leva rótulo no próprio diapositivo, nota na legenda e metadados IPTC; o texto dos diapositivos é sempre escrito pelo código, nunca pelo modelo de imagem.
 6. No máximo 1 notícia por dia e 6 pedidos de IA por execução (configurável).
 
 ## Decisões e alternativas
@@ -33,4 +34,5 @@ Um só fornecedor (GitHub), um só idioma (Python), dados em ficheiros de texto 
 - **GitHub Pages em vez de WordPress/Blogger:** domínio próprio, controlo de SEO, publicação por commit e alojamento das imagens que a API do Instagram exige. O Cloudflare Pages é a saída se o site passar a ter receitas (as Pages não podem servir um negócio online).
 - **Ficheiros em vez de base de dados:** histórico completo no git, cópia de segurança com um `git clone`, nenhum serviço extra.
 - **Pull request como fila de revisão:** gratuito, com notificação por email e aprovação no telemóvel (app GitHub).
+- **Imagens do Instagram na Cloudflare Workers AI:** único serviço com quota diária gratuita que chega para um carrossel (10 000 neurons/dia; ≈ 100 por imagem). Os modelos de imagem da Gemini não têm plano gratuito; a Hugging Face dá 0,10 USD/mês; a Pollinations anónima é limitada e sem garantias. Estilo de ilustração editorial (não fotorrealista) para não passar por fotografia de um local ou entidade real (AI Act, art. 50.º, n.º 4).
 - **IA intercambiável:** o GitHub Models foi retirado em 30/07/2026; a cadeia aceita Gemini e qualquer API compatível com OpenAI (Mistral, Groq, OpenRouter) através de segredos, sem alterar código.

@@ -87,36 +87,88 @@ def _article_for_ig(cfg, a):
     return a
 
 
-def cmd_instagram(args) -> int:
+def _build_carousel(cfg, a, out_dir: Path, model: str | None = None) -> tuple[list[Path], str, dict]:
+    """Imagens do tema (se ativas) + diapositivos + legenda. Devolve (ficheiros, legenda, resumo das imagens)."""
     from .instagram.caption import make_caption
-    from .instagram.cover_image import cover_enabled, generate_cover
-    from .instagram.render import render_carousel
-    from .instagram.select import pick_for_week
+    from .instagram.images import images_enabled, make_images
+    from .instagram.render import carousel_points, render_carousel
     from .site.build import public_base
+
+    ig = cfg.editorial["instagram"]
+    base = public_base(cfg.site)
+    chart = cfg.root / "content" / a["chart"] if a.get("type") == "dados" and a.get("chart") else None
+    chart = chart if chart and chart.is_file() else None
+    n_points = len(carousel_points(a, ig.get("max_slides", 7), chart=chart is not None))
+    imgs = make_images(a, n_points, cfg.editorial, os.environ, model=model) \
+        if images_enabled(cfg.editorial, os.environ) else None
+    paths = render_carousel(a, out_dir, ig.get("max_slides", 7), base.replace("https://", ""),
+                            cover_image=imgs.cover if imgs else None, style=ig,
+                            point_images=imgs.points if imgs else None, chart_path=chart)
+    count = imgs.count if imgs else 0
+    caption = make_caption(a, base, ig["hashtags"], style=ig,
+                           ai_cover=bool(imgs and imgs.cover is not None and count == 1), ai_images=count)
+    (out_dir / "legenda.txt").write_text(caption, encoding="utf-8")
+    info = {"ai_images": count, "model": imgs.model if imgs else None, "brief": imgs.brief if imgs else None,
+            "scenes": imgs.scenes if imgs else [], "log": imgs.log if imgs else ["imagens IA desligadas ou sem CF_*"]}
+    return paths, caption, info
+
+
+def cmd_instagram(args) -> int:
+    from .instagram.select import pick_for_week
     from .store import Store
 
     cfg = load_config(args.root)
     store = Store(cfg.root)
     state = store.instagram_state()
-    ig = cfg.editorial["instagram"]
-    base = public_base(cfg.site)
-    label = base.replace("https://", "")
     picks = pick_for_week(store.published_articles(), _now(), n=1, already_posted=set(state))
     if not picks:
         print("Nenhum artigo novo para o Instagram.")
         return 0
     a = _article_for_ig(cfg, picks[0])
     folder = f"instagram/{_now():%Y-%m-%d}/{a['slug']}"
-    cover = generate_cover(a, os.environ) if cover_enabled(cfg.editorial, os.environ) else None
-    paths = render_carousel(a, cfg.root / "content" / folder, ig.get("max_slides", 7), label,
-                            cover_image=cover, style=ig)
-    caption = make_caption(a, base, ig["hashtags"], style=ig, ai_cover=cover is not None)
-    (cfg.root / "content" / folder / "legenda.txt").write_text(caption, encoding="utf-8")
+    paths, _, info = _build_carousel(cfg, a, cfg.root / "content" / folder)
     state[a["slug"]] = {"prepared": _now().isoformat(), "folder": folder, "slides": len(paths), "media_id": None,
-                        "ai_cover": cover is not None}
+                        "ai_cover": info["ai_images"] > 0, "ai_images": info["ai_images"], "image_model": info["model"]}
     store.save_instagram_state(state)
-    capa = "capa com imagem IA" if cover is not None else "capa tipográfica"
-    print(f"Carrossel preparado: content/{folder} ({len(paths)} imagens, {capa})")
+    for line in info["log"]:
+        print(f"  imagens: {line}")
+    print(f"Carrossel preparado: content/{folder} ({len(paths)} imagens, {info['ai_images']} com imagem IA)")
+    return 0
+
+
+def cmd_instagram_preview(args) -> int:
+    """Gera um carrossel de teste noutra pasta: não mexe no estado, não publica, não grava em content/."""
+    from PIL import Image
+
+    from .instagram.select import pick_for_week
+    from .store import Store
+
+    cfg = load_config(args.root)
+    arts = Store(cfg.root).published_articles()
+    if args.slug:
+        arts = [a for a in arts if a.get("slug") == args.slug]
+    else:
+        arts = pick_for_week(arts, _now(), n=1, days=30)
+    if not arts:
+        print(f"Artigo não encontrado: {args.slug or '(nenhum nos últimos 30 dias)'}")
+        return 1
+    a = _article_for_ig(cfg, arts[0])
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    paths, _, info = _build_carousel(cfg, a, out, model=args.model or None)
+    (out / "imagens.json").write_text(json.dumps({"slug": a["slug"], **info}, ensure_ascii=False, indent=2),
+                                      encoding="utf-8")
+    thumbs = [Image.open(p).resize((360, 450)) for p in paths]      # folha de contacto para ver tudo de uma vez
+    sheet = Image.new("RGB", (360 * len(thumbs) + 10 * (len(thumbs) - 1), 450), (255, 255, 255))
+    for i, t in enumerate(thumbs):
+        sheet.paste(t, (i * 370, 0))
+    sheet.save(out / "folha.jpg", "JPEG", quality=85)
+    print(f"Teste: {a['slug']} — modelo {info['model']}, cenas por {info['brief']}, "
+          f"{info['ai_images']}/{len(paths)} diapositivos com imagem IA")
+    for scene in info["scenes"]:
+        print(f"  cena: {scene}")
+    for line in info["log"]:
+        print(f"  imagens: {line}")
     return 0
 
 
@@ -337,6 +389,11 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--subdir", default="", help="gerar em <out>/<subdir> com redirecionamento na raiz (ex.: news)")
     add("audit", cmd_audit, "testar todas as fontes")
     add("instagram", cmd_instagram, "preparar o carrossel da semana")
+    pv = add("instagram-preview", cmd_instagram_preview,
+             "gerar um carrossel de teste noutra pasta (não publica nem mexe no estado)")
+    pv.add_argument("--slug", default="", help="artigo; vazio = o melhor dos últimos 30 dias")
+    pv.add_argument("--model", default="", help="flux-1-schnell ou flux-2-klein-4b (vazio = o da configuração)")
+    pv.add_argument("--out", default="out/instagram-teste")
     add("instagram-publish", cmd_instagram_publish, "publicar carrosséis preparados (se ativo)")
     add("instagram-check", cmd_instagram_check, "confirmar que o token dá acesso à conta (não publica)")
     r = add("refresh-ig-token", cmd_refresh_token, "renovar o token do Instagram")
