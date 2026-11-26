@@ -59,7 +59,7 @@ def _canvas(page: int, total: int, site_label: str,
 def _veiled(cover: Image.Image) -> Image.Image:
     """Imagem a toda a área, com véu escuro (mais denso em baixo) para o texto ler bem."""
     bg = ImageOps.fit(cover.convert("RGB"), (W, H), method=Image.LANCZOS)
-    bg = Image.blend(bg, Image.new("RGB", (W, H), INK), 0.6)
+    bg = Image.blend(bg, Image.new("RGB", (W, H), INK), 0.5)   # o tema vê-se; o texto continua legível
     shade = Image.new("L", (W, H), 0)
     sd = ImageDraw.Draw(shade)
     for y in range(H // 2, H):

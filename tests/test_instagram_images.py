@@ -120,11 +120,13 @@ def test_schnell_uses_json_body_and_klein_uses_multipart():
     im, why = generate_image("wind turbines. STYLE", ENV, "flux-1-schnell", seed=5, steps=12, post=ok_post(calls))
     assert im is not None and why == "ok"
     assert calls[0]["url"].endswith("/accounts/acc123/ai/run/@cf/black-forest-labs/flux-1-schnell")
-    assert calls[0]["json"] == {"prompt": "wind turbines. STYLE", "steps": 8, "seed": 5}   # máximo 8 passos
+    # o esquema do schnell só aceita prompt e steps (seed dava HTTP 400, código 5006); máximo 8 passos
+    assert calls[0]["json"] == {"prompt": "wind turbines. STYLE", "steps": 8}
     im, _ = generate_image("wind turbines. STYLE", ENV, "flux-2-klein-4b", seed=5, size=1024, post=ok_post(calls))
     assert im is not None and calls[1]["url"].endswith("@cf/black-forest-labs/flux-2-klein-4b")
     assert calls[1]["files"]["prompt"] == (None, "wind turbines. STYLE")
-    assert calls[1]["files"]["width"] == (None, "1024") and calls[1]["json"] is None
+    assert calls[1]["files"]["width"] == (None, "1024") and calls[1]["files"]["seed"] == (None, "5")
+    assert calls[1]["json"] is None
 
 
 def test_generate_image_never_raises_and_never_leaks_token():
@@ -144,17 +146,26 @@ def test_make_images_fills_cover_and_every_point(project):
     out = make_images(ART, 4, editorial(project), ENV, post=ok_post(calls), llm=llm)
     assert out.cover is not None and all(out.points) and out.count == 5
     assert len(calls) == 5 and seen["check"] == 5 and out.brief == "ia"
-    assert len({c["json"]["seed"] for c in calls}) == 5
     assert all("No text" in c["json"]["prompt"] for c in calls)
 
 
-def test_rejected_image_is_retried_then_left_typographic(project):
+def test_rejected_image_retries_then_uses_reserve_scene(project):
     calls = []
     no = {"ok": False, "problems": ["letters on the tower"]}
-    llm, _ = fake_llm(verdicts=[{"ok": True}, no, {"ok": True}, no, no])   # ponto 1 à 2.ª, ponto 2 falha 2×
+    llm, _ = fake_llm(verdicts=[{"ok": True}, no, {"ok": True}, no, no, {"ok": True}])   # ponto 2: reserva
     out = make_images(ART, 4, editorial(project, max_attempts=2), ENV, post=ok_post(calls), llm=llm)
-    assert out.cover is not None and out.points[0] is not None and out.points[1] is None
-    assert any("recusada" in line for line in out.log)
+    assert out.count == 5
+    assert calls[5]["json"]["prompt"].startswith(fallback_scenes(ART, 4)[2])   # capa, p1×2, p2×2, reserva
+    assert "ponto 2: ok com a cena de reserva" in out.log
+
+
+def test_point_without_image_reuses_an_approved_one(project):
+    calls = []
+    no = {"ok": False, "problems": ["four blades"]}
+    llm, _ = fake_llm(verdicts=[{"ok": True}, no, no, no])     # ponto 1 falha nas 3 tentativas
+    out = make_images(ART, 4, editorial(project, max_attempts=2), ENV, post=ok_post(calls), llm=llm)
+    assert all(p is not None for p in out.points)
+    assert any("reaproveita" in line for line in out.log)
 
 
 def test_check_unavailable_accepts_image(project):

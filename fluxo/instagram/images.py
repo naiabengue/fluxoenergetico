@@ -77,8 +77,10 @@ CHECK_SYSTEM = (
     "You review images before they are published by a news account. Answer only with JSON: "
     '{"ok": true or false, "problems": ["..."]}. Set ok to false if the image shows any of these: readable text '
     "or text-like scribbles, letters, numbers or symbols; people, faces, hands or human silhouettes; flags, logos or "
-    "brand marks; maps; explosions, disasters or injuries; badly distorted objects that look like generation errors; "
-    "or if it clearly does not show the requested scene. Otherwise set ok to true."
+    "brand marks; maps; explosions, disasters or injuries; badly distorted objects that look like generation errors, "
+    "including objects with the wrong number of parts (every wind turbine must have exactly three blades joined at "
+    "one hub; pylons, panels and towers must be structurally plausible); or if it clearly does not show the "
+    "requested scene. Otherwise set ok to true."
 )
 BANNED = re.compile(r"\b(text|letters?|words?|numbers?|digits?|signs?|signage|logos?|brands?|flags?|maps?|charts?|"
                     r"graphs?|screens?|documents?|newspapers?|persons?|people|man|men|woman|women|faces?|hands?|"
@@ -177,8 +179,9 @@ def generate_image(prompt: str, env: Mapping[str, str], model: str = "flux-1-sch
             fields = {"prompt": prompt, "width": str(size), "height": str(size), "seed": str(seed)}
             resp = post(url, headers=headers, files={k: (None, v) for k, v in fields.items()}, timeout=timeout)
         else:
-            resp = post(url, headers=headers, json={"prompt": prompt, "steps": max(1, min(int(steps), 8)),
-                                                    "seed": seed}, timeout=timeout)
+            # O esquema do schnell só aceita prompt e steps (additionalProperties: false); a semente é aleatória.
+            resp = post(url, headers=headers, json={"prompt": prompt, "steps": max(1, min(int(steps), 8))},
+                        timeout=timeout)
         data = resp.json()
         if resp.status_code != 200 or data.get("success") is False:
             errs = data.get("errors") or []
@@ -219,29 +222,41 @@ def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any
     if cfg["slides"] == "cover":
         n_points = 0
     out.scenes, out.brief = visual_brief(article, n_points, llm_cfg, env, llm=llm)
+    reserve = fallback_scenes(article, n_points)
     budget = int(cfg["max_generations"])
     for slot, scene in enumerate(out.scenes):
         name = "capa" if slot == 0 else f"ponto {slot}"
-        for attempt in range(int(cfg["max_attempts"])):
+        tries = [scene] * int(cfg["max_attempts"])
+        if reserve[slot] != scene:
+            tries.append(reserve[slot])      # última tentativa com a cena de reserva, mais simples
+        for attempt, sc in enumerate(tries):
             if budget <= 0:
                 out.log.append(f"{name}: limite de {cfg['max_generations']} imagens por carrossel atingido")
                 break
             budget -= 1
-            im, why = generate_image(build_prompt(scene), env, model, _seed(article.get("slug", ""), slot, attempt),
+            im, why = generate_image(build_prompt(sc), env, model, _seed(article.get("slug", ""), slot, attempt),
                                      cfg["steps"], int(cfg["size"]), post=post)
             if im is None:
                 out.log.append(f"{name}: falhou ({why})")
-                if why.startswith("HTTP 4"):   # quota esgotada ou credenciais: não vale a pena insistir
+                if why.startswith("HTTP 4"):   # pedido inválido, quota esgotada ou credenciais: não insistir
                     budget = 0
                 break
-            verdict, problems = check_image(im, scene, llm_cfg, env, llm=llm) if cfg["check"] else (None, "")
+            verdict, problems = check_image(im, sc, llm_cfg, env, llm=llm) if cfg["check"] else (None, "")
             if verdict is False:
                 out.log.append(f"{name}: recusada na verificação ({problems})")
                 continue
-            out.log.append(f"{name}: ok" + (" (sem verificação)" if verdict is None else ""))
+            reserva = " com a cena de reserva" if sc != scene else ""
+            out.log.append(f"{name}: ok{reserva}" + (" (sem verificação)" if verdict is None else ""))
             if slot == 0:
                 out.cover = im
             else:
                 out.points[slot - 1] = im
             break
+    # Para o carrossel não misturar diapositivos com e sem imagem: um ponto sem imagem reaproveita outra já aprovada.
+    spare = [im for im in [out.cover, *out.points] if im is not None]
+    if spare and cfg["slides"] != "cover":
+        for i, im in enumerate(out.points):
+            if im is None:
+                out.points[i] = spare[i % len(spare)]
+                out.log.append(f"ponto {i + 1}: sem imagem própria, reaproveita outra imagem aprovada")
     return out
