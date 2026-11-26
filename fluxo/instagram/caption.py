@@ -7,7 +7,7 @@ LIMIT = 2200
 
 
 def make_caption(article: dict[str, Any], site_base: str, hashtags: list[str],
-                 style: dict[str, Any] | None = None, ai_cover: bool = False) -> str:
+                 style: dict[str, Any] | None = None, ai_cover: bool = False, ai_images: int = 0) -> str:
     style = style or {}
     domain = site_base.replace("https://", "").replace("http://", "").rstrip("/")
     emoji = (style.get("hook_emoji") or {}).get(article.get("category"), "")
@@ -21,8 +21,10 @@ def make_caption(article: dict[str, Any], site_base: str, hashtags: list[str],
         notes.append("Texto com apoio de inteligência artificial, verificado contra a fonte.")
     elif article.get("type") == "dados":
         notes.append("Peça gerada a partir de dados oficiais.")
-    if ai_cover:
-        notes.append("Imagem de capa gerada por IA.")
+    if ai_images > 1:
+        notes.append("Imagens geradas por IA.")
+    elif ai_cover or ai_images == 1:
+        notes.append("Imagem de capa gerada por IA." if ai_cover else "Imagem gerada por IA.")
     link = f"{style.get('link_emoji', '')} Artigo completo em {domain} (ligação na bio).".strip()
     tail = [f"{style.get('cta_emoji', '')} {cta}".strip() if cta else "",
             "\n".join(x for x in [f"Fonte: {sources}." if sources else "", *notes] if x),

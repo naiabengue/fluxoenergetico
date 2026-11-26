@@ -1,6 +1,7 @@
 """IA opcional com cadeia de fornecedores gratuitos. Sem chaves → devolve None e o sistema continua."""
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -47,10 +48,14 @@ def _gemini_models(p: dict) -> list[str]:
     return [str(m) for m in models]
 
 
-def _gemini_once(model: str, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable) -> str:
+def _gemini_once(model: str, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable,
+                 image_b64: str | None = None) -> str:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    parts: list[dict[str, Any]] = [{"text": prompt}]
+    if image_b64:   # imagem JPEG junto com o pedido (verificação das imagens do Instagram)
+        parts.insert(0, {"inlineData": {"mimeType": "image/jpeg", "data": image_b64}})
     body = {"systemInstruction": {"parts": [{"text": system}]},
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {"temperature": temp, "responseMimeType": "application/json"}}
     r = post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=body, timeout=timeout)
     if r.status_code in (404, 429, 503):   # retirado, sem quota ou sobrecarregado: as quotas são por modelo
@@ -67,11 +72,12 @@ def _gemini_once(model: str, key: str, system: str, prompt: str, temp: float, ti
     return text
 
 
-def _gemini(p: dict, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable):
+def _gemini(p: dict, key: str, system: str, prompt: str, temp: float, timeout: int, post: Callable,
+            image_b64: str | None = None):
     last: Exception | None = None
     for model in _gemini_models(p):
         try:
-            return _gemini_once(model, key, system, prompt, temp, timeout, post), model
+            return _gemini_once(model, key, system, prompt, temp, timeout, post, image_b64), model
         except ModelUnavailable as e:      # tenta o modelo seguinte da lista
             USAGE["errors"].append(str(e))
             last = e
@@ -92,19 +98,24 @@ def _openai_compatible(p: dict, key: str, system: str, prompt: str, temp: float,
 
 
 def generate_json(system: str, prompt: str, llm_cfg: dict[str, Any],
-                  env: Mapping[str, str] | None = None, post: Callable = requests.post) -> dict[str, Any] | None:
+                  env: Mapping[str, str] | None = None, post: Callable = requests.post,
+                  image_jpeg: bytes | None = None) -> dict[str, Any] | None:
+    """Pede JSON à cadeia de fornecedores. Com `image_jpeg`, só os fornecedores que veem imagens (Gemini)."""
     env = os.environ if env is None else env
+    image_b64 = base64.b64encode(image_jpeg).decode() if image_jpeg else None
     for p in llm_cfg.get("providers", []):
         key = env.get(p.get("key_env", ""), "")
         if not key:
             continue
         kind = p["kind"]
+        if image_b64 and kind != "gemini":
+            continue
         USAGE["calls"] += 1
         USAGE["by_provider"][kind] = USAGE["by_provider"].get(kind, 0) + 1
         try:
             if kind == "gemini":
                 text, model = _gemini(p, key, system, prompt, llm_cfg.get("temperature", 0.2),
-                                      llm_cfg.get("timeout_s", 60), post)
+                                      llm_cfg.get("timeout_s", 60), post, image_b64)
             elif kind == "openai_compatible":
                 text, model = _openai_compatible(p, key, system, prompt, llm_cfg.get("temperature", 0.2),
                                                  llm_cfg.get("timeout_s", 60), post, env)
