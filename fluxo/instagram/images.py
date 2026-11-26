@@ -225,7 +225,7 @@ def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any
         n_points = 0
     out.scenes, out.brief = visual_brief(article, n_points, llm_cfg, env, llm=llm)
     reserve = fallback_scenes(article, n_points)
-    budget = int(cfg["max_generations"])
+    budget, failures = int(cfg["max_generations"]), 0
     for slot, scene in enumerate(out.scenes):
         name = "capa" if slot == 0 else f"ponto {slot}"
         tries = [scene] * int(cfg["max_attempts"])
@@ -240,9 +240,15 @@ def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any
                                      cfg["steps"], int(cfg["size"]), post=post)
             if im is None:
                 out.log.append(f"{name}: falhou ({why})")
-                if why.startswith("HTTP 4"):   # pedido inválido, quota esgotada ou credenciais: não insistir
+                failures += 1
+                # Credenciais, quota diária (4006) ou falhas seguidas: parar. Um 400 isolado (ex.: 3030, falso
+                # positivo do filtro de conteúdo) só salta para a tentativa seguinte.
+                if why.split()[:2] in (["HTTP", "401"], ["HTTP", "403"], ["HTTP", "429"]) or why.endswith(" 4006") \
+                        or failures >= 3:
                     budget = 0
-                break
+                    break
+                continue
+            failures = 0
             verdict, problems = check_image(im, sc, llm_cfg, env, llm=llm) if cfg["check"] else (None, "")
             if verdict is False:
                 out.log.append(f"{name}: recusada na verificação ({problems})")

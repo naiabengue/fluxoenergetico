@@ -188,6 +188,31 @@ def test_quota_error_stops_further_requests(project):
     assert out.count == 0 and len(calls) == 1
 
 
+def test_content_filter_false_positive_moves_to_next_attempt(project):
+    calls = []
+    good = ok_post([])
+
+    def post(url, **k):
+        calls.append(url)
+        if len(calls) == 1:     # 3030: o filtro de conteúdo recusou o primeiro pedido
+            return R(400, {"success": False, "errors": [{"code": 3030}]})
+        return good(url, **k)
+    llm, _ = fake_llm()
+    out = make_images(ART, 4, editorial(project), ENV, post=post, llm=llm)
+    assert out.count == 5 and len(calls) == 6 and "capa: falhou (HTTP 400 3030)" in out.log
+
+
+def test_three_failures_in_a_row_stop_the_carousel(project):
+    calls = []
+
+    def post(url, **k):
+        calls.append(url)
+        return R(400, {"success": False, "errors": [{"code": 5006}]})
+    llm, _ = fake_llm()
+    out = make_images(ART, 4, editorial(project), ENV, post=post, llm=llm)
+    assert out.count == 0 and len(calls) == 3
+
+
 def test_cover_only_mode_generates_one_image(project):
     calls = []
     llm, _ = fake_llm()
