@@ -154,8 +154,9 @@ instagram:
     enabled: true
     slides: all                # all = capa e pontos-chave; cover = só a capa
     model: flux-1-schnell      # ou flux-2-klein-4b (comparar com o workflow «Instagram — teste de imagens»)
-    steps: 8                   # schnell: 1–8 (≈96 neurons por imagem com 8)
-    size: 1024                 # klein: lado da imagem quadrada (≈104 neurons com 1024)
+    steps: 4                   # schnell: 1–8; 4 é o número para que o modelo foi feito (≈154 neurons; 8 ≈ 305,
+                               # medido a 26/11 na Cloudflare)
+    size: 1024                 # klein: lado da imagem quadrada (≈91 neurons com 1024, medido a 26/11)
     max_attempts: 2            # por diapositivo, quando a verificação recusa a imagem
-    max_generations: 14        # teto por carrossel (≈1 400 neurons no pior caso)
+    max_generations: 14        # teto por carrossel (≈2 150 neurons no pior caso com schnell a 4 passos)
     check: true                # a IA de texto vê cada imagem: recusa letras, pessoas, bandeiras, logótipos, mapas

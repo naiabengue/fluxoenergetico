@@ -8,10 +8,10 @@ Fluxo, diapositivo a diapositivo:
    recusada → nova tentativa com outra semente; sem verificação disponível → a imagem é aceite;
 4. sem imagem válida, o diapositivo fica tipográfico. Nunca bloqueia a publicação.
 
-Quotas do plano gratuito: 10 000 neurons por dia (renovados às 00:00 UTC); acima disso o pedido falha e não é
-cobrado. FLUX.1 [schnell]: 4,80 neurons por bloco de 512×512 + 9,60 por passo (1024×1024, 8 passos ≈ 96).
-FLUX.2 [klein] 4B: 26,05 neurons por bloco de saída (1024×1024 ≈ 104). Fonte:
-developers.cloudflare.com/workers-ai/platform/pricing/ (consultado a 26/11/2026).
+Quotas do plano gratuito: 10 000 neurons por dia; acima disso o pedido falha (erro 4006) e não é cobrado. A 27/11
+o erro continuou depois das 00:00 UTC, com 0 neurons gastos nesse dia: na prática conta como uma janela de 24 h.
+Custo medido a 26/11 (análise GraphQL da conta): FLUX.1 [schnell] 1024×1024 ≈ 38 neurons por passo (8 passos ≈ 305,
+4 passos ≈ 154; a tabela de preços indica 9,60 por passo, mas é por bloco de 512×512); FLUX.2 [klein] 4B ≈ 91.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ MODELS = {
     "flux-1-schnell": {"id": "@cf/black-forest-labs/flux-1-schnell", "form": False},
     "flux-2-klein-4b": {"id": "@cf/black-forest-labs/flux-2-klein-4b", "form": True},
 }
-DEFAULTS = {"enabled": False, "slides": "all", "model": "flux-1-schnell", "steps": 8, "size": 1024,
+DEFAULTS = {"enabled": False, "slides": "all", "model": "flux-1-schnell", "steps": 4, "size": 1024,
             "max_attempts": 2, "max_generations": 14, "check": True}
 
 # Cenas de reserva por categoria (variam de diapositivo para diapositivo).

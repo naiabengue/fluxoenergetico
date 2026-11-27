@@ -1,6 +1,6 @@
 # Gera um carrossel de teste com imagens IA, para comparar modelos. Não publica no Instagram, não mexe no estado
 # nem em main: o resultado fica no artefacto «carrossel-teste» e no ramo teste/carrossel-ia (substituído a cada
-# execução). Também corre a cada envio para um ramo instagram/… (testar alterações antes de as integrar).
+# execução). Só corre à mão: gasta a mesma quota diária da Cloudflare que a produção (ambos ≈ 1 500 neurons).
 name: Instagram — teste de imagens
 on:
   workflow_dispatch:
@@ -11,10 +11,8 @@ on:
       modelo:
         description: "Modelo de imagem"
         type: choice
-        options: [ambos, flux-1-schnell, flux-2-klein-4b]
-        default: ambos
-  push:
-    branches: ["instagram/**"]
+        options: [flux-1-schnell, flux-2-klein-4b, ambos]
+        default: flux-1-schnell
 permissions:
   contents: write
 concurrency:
@@ -39,7 +37,7 @@ jobs:
           LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           SLUG: ${{ github.event.inputs.slug || 'energia-eolica-lidera-producao-renovavel-em-portugal-durante-o-mes-de-outubro' }}
-          MODELO: ${{ github.event.inputs.modelo || 'ambos' }}
+          MODELO: ${{ github.event.inputs.modelo || 'flux-1-schnell' }}
         run: |
           if [ -z "$CF_ACCOUNT_ID" ] || [ -z "$CF_API_TOKEN" ]; then
             echo "::warning::Faltam os segredos CF_ACCOUNT_ID e CF_API_TOKEN: os diapositivos saem tipográficos."
