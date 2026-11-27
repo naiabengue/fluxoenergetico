@@ -1,0 +1,22 @@
+{
+  "slug": "sistemas-digitais-da-adene-enfrentam-indisponibilidade-temporaria",
+  "ai_images": 0,
+  "model": "flux-1-schnell",
+  "brief": "ia",
+  "scenes": [
+    "A closed modern server room housing rows of black data racks with blinking green status lights, powered by a heavy-duty backup diesel generator standing silently in the corner",
+    "A glowing digital control panel mounted on the exterior wall of a modern energy efficient residential apartment building during twilight",
+    "A row of automated payment terminals installed inside a brightly lit electric vehicle charging station parking lot with no vehicles present",
+    "an empty meeting room with a long table and chairs",
+    "A fiber optic cable routing box attached to the exterior brick wall of a suburban power substation under soft overcast daylight",
+    "a closed padlock resting on an electricity meter"
+  ],
+  "log": [
+    "capa: falhou (HTTP 429 4006)",
+    "ponto 1: limite de 14 imagens atingido",
+    "ponto 2: limite de 14 imagens atingido",
+    "ponto 3: limite de 14 imagens atingido",
+    "ponto 4: limite de 14 imagens atingido",
+    "ponto 5: limite de 14 imagens atingido"
+  ]
+}
