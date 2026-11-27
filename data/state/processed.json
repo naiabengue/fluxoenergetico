@@ -11,6 +11,10 @@
   "date": "2026-11-17",
   "decision": "rejeitado: fonte inacessível ou curta"
  },
+ "2bc8ade03e568a34": {
+  "date": "2026-11-27",
+  "decision": "rejeitado: fonte inacessível ou curta"
+ },
  "2bc9705c31087a82": {
   "date": "2026-11-23",
   "decision": "rever"
@@ -30,6 +34,10 @@
  "549bd9e770946281": {
   "date": "2026-11-17",
   "decision": "rejeitado"
+ },
+ "6460fc2a78343ace": {
+  "date": "2026-11-27",
+  "decision": "rejeitado: fonte inacessível ou curta"
  },
  "6f67eee10efa5690": {
   "date": "2026-11-26",
@@ -99,6 +107,10 @@
   "date": "2026-11-17",
   "decision": "rejeitado: fonte inacessível ou curta"
  },
+ "df560fe8c1d28e7d": {
+  "date": "2026-11-27",
+  "decision": "rejeitado: fonte inacessível ou curta"
+ },
  "e2b13e6d2c78ef45": {
   "date": "2026-11-18",
   "decision": "rever"
@@ -114,5 +126,9 @@
  "f2797420c1bea77b": {
   "date": "2026-11-20",
   "decision": "rejeitado: fonte inacessível ou curta"
+ },
+ "f6e312d51243dc6f": {
+  "date": "2026-11-27",
+  "decision": "rever"
  }
 }
