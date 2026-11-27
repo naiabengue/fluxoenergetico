@@ -1,8 +1,14 @@
-# Terça e sexta: prepara o carrossel do melhor artigo da semana; publica pela API se estiver ativa.
+# Prepara o carrossel do melhor artigo ainda não publicado no Instagram; publica pela API se estiver ativa.
 name: Instagram
-# Lançado às 09:40 (±15 min) de terça e sexta pelo Google Apps Script em naiabengue@gmail.com (docs/MANUAL.md, 1.5.2).
+# Lançado às 09:40 (±15 min) todos os dias pelo Google Apps Script em naiabengue@gmail.com (docs/MANUAL.md, 1.5.2).
+# Os dias com carrossel decidem-se em config/editorial.yaml (instagram.weekdays; com só dias úteis, salta feriados).
 on:
   workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Preparar mesmo num dia fora de instagram.weekdays (ou feriado)"
+        type: boolean
+        default: false
 permissions:
   contents: write
   issues: write
@@ -32,7 +38,7 @@ jobs:
           LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
         run: |
-          python -m fluxo instagram | tee out.txt
+          python -m fluxo instagram ${{ inputs.forcar && '--force' || '' }} | tee out.txt
           if grep -q "Carrossel preparado" out.txt; then echo "ready=true" >> "$GITHUB_OUTPUT"; fi
       - name: Guardar imagens
         run: |

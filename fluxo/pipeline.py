@@ -70,6 +70,28 @@ def news_today(processed: Mapping[str, Any], today: str) -> int:
                if v.get("date") == today and v.get("decision") in ("publicar", "rever"))
 
 
+def _article_image(draft, cfg: Config, env: Mapping[str, str], now: datetime, root: Path, summary: dict,
+                   post: Callable) -> None:
+    """Imagem do tema no topo da notícia (opcional; sem CF_* ou se falhar, a notícia sai sem imagem)."""
+    from .instagram.images import article_images_enabled, make_article_image, save_article_image
+
+    if not article_images_enabled(cfg.editorial, env):
+        return
+    article = {"title": draft.title, "lead": draft.lead, "key_points": draft.key_points, "slug": draft.slug,
+               "category": draft.category,
+               "category_name": cfg.editorial["categories"].get(draft.category, {}).get("name", "")}
+    try:
+        im, log = make_article_image(article, cfg.editorial, env, post=post)
+    except Exception as e:   # nunca deixa a imagem impedir a notícia
+        im, log = None, [f"erro inesperado ({e.__class__.__name__})"]
+    summary.setdefault("image_log", []).extend(log)
+    if im is None:
+        return
+    rel = f"media/{now:%Y%m%d}-{draft.slug[:60]}.jpg"
+    save_article_image(im, Path(root) / "content" / rel)
+    draft.image = rel
+
+
 def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], drafts_dir: Path,
               post: Callable = requests.post, data_pieces: list[str] | str = "auto",
               catch_up: bool = False) -> dict[str, Any]:
@@ -172,6 +194,8 @@ def run_daily(cfg: Config, fetcher, now: datetime, env: Mapping[str, str], draft
         v = validate(draft, text, ed, published, today=now.date())
         decision = decide(draft, v, sc.decision, ed)
         store.mark_processed(it.id, decision, now.isoformat())
+        if decision in ("publicar", "rever"):
+            _article_image(draft, cfg, env, now, cfg.root if decision == "publicar" else drafts_dir, summary, post)
         if decision == "publicar":
             draft.ai["review"] = "auto"
             write_article(draft, cfg.root, now)

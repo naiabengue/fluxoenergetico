@@ -59,6 +59,9 @@ main.wrap { padding-top: 1.75rem; padding-bottom: 3rem; }
 .keypoints { background: var(--panel); border-left: 3px solid var(--amber); padding: .9rem 1.1rem .4rem; margin: 0 0 1.75rem; max-width: var(--measure); }
 .keypoints h2 { font: 600 1rem/1.3 var(--sans); color: var(--ink); margin: 0 0 .4rem; }
 .keypoints ul { margin: 0 0 .6rem; padding-left: 1.1rem; font-variant-numeric: tabular-nums; }
+.hero { margin: 0 0 1.75rem; }
+.hero img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.hero figcaption { margin-top: .4rem; font-size: .8rem; color: var(--muted, #5a6872); }
 .chart { margin: 0 0 1.75rem; }
 .chart img { width: 100%; height: auto; border: 1px solid var(--line); }
 .prose { max-width: var(--measure); }

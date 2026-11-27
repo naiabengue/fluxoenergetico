@@ -215,51 +215,71 @@ def _seed(slug: str, slot: int, attempt: int) -> int:
     return (zlib.crc32(slug.encode()) + slot * 1009 + attempt * 7919) % 2_147_483_647
 
 
-def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any], env: Mapping[str, str],
-                model: str | None = None, post: Callable = requests.post, llm: Callable = generate_json) -> SlideImages:
-    cfg = settings(editorial)
-    model = model or cfg["model"]
-    llm_cfg = editorial.get("llm") or {}
-    out = SlideImages(model=model, points=[None] * n_points)
-    if cfg["slides"] == "cover":
-        n_points = 0
-    out.scenes, out.brief = visual_brief(article, n_points, llm_cfg, env, llm=llm)
-    reserve = fallback_scenes(article, n_points)
-    budget, failures = int(cfg["max_generations"]), 0
-    for slot, scene in enumerate(out.scenes):
-        name = "capa" if slot == 0 else f"ponto {slot}"
-        tries = [scene] * int(cfg["max_attempts"])
-        if reserve[slot] != scene:
-            tries.append(reserve[slot])      # última tentativa com a cena de reserva, mais simples
+class _Run:
+    """Estado partilhado pelas tentativas de um carrossel (ou da imagem de um artigo): teto e falhas seguidas."""
+
+    def __init__(self, cfg: dict[str, Any], env: Mapping[str, str], model: str, slug: str,
+                 post: Callable, llm: Callable, log: list[str]):
+        self.cfg, self.env, self.model, self.slug = cfg, env, model, slug
+        self.post, self.llm, self.log = post, llm, log
+        self.llm_cfg: dict[str, Any] = {}
+        self.budget, self.failures = int(cfg["max_generations"]), 0
+
+    def slot(self, slot: int, name: str, scene: str, reserve: str) -> Image.Image | None:
+        """Imagem aprovada para uma cena: tentativas com a cena da IA, depois a de reserva. None se nada servir."""
+        tries = [scene] * int(self.cfg["max_attempts"]) + ([reserve] if reserve != scene else [])
         for attempt, sc in enumerate(tries):
-            if budget <= 0:
-                out.log.append(f"{name}: limite de {cfg['max_generations']} imagens por carrossel atingido")
-                break
-            budget -= 1
-            im, why = generate_image(build_prompt(sc), env, model, _seed(article.get("slug", ""), slot, attempt),
-                                     cfg["steps"], int(cfg["size"]), post=post)
+            if self.budget <= 0:
+                self.log.append(f"{name}: limite de {self.cfg['max_generations']} imagens atingido")
+                return None
+            self.budget -= 1
+            im, why = generate_image(build_prompt(sc), self.env, self.model, _seed(self.slug, slot, attempt),
+                                     self.cfg["steps"], int(self.cfg["size"]), post=self.post)
             if im is None:
-                out.log.append(f"{name}: falhou ({why})")
-                failures += 1
+                self.log.append(f"{name}: falhou ({why})")
+                self.failures += 1
                 # Credenciais, quota diária (4006) ou falhas seguidas: parar. Um 400 isolado (ex.: 3030, falso
                 # positivo do filtro de conteúdo) só salta para a tentativa seguinte.
                 if why.split()[:2] in (["HTTP", "401"], ["HTTP", "403"], ["HTTP", "429"]) or why.endswith(" 4006") \
-                        or failures >= 3:
-                    budget = 0
-                    break
+                        or self.failures >= 3:
+                    self.budget = 0
+                    return None
                 continue
-            failures = 0
-            verdict, problems = check_image(im, sc, llm_cfg, env, llm=llm) if cfg["check"] else (None, "")
+            self.failures = 0
+            verdict, problems = check_image(im, sc, self.llm_cfg, self.env, llm=self.llm) \
+                if self.cfg["check"] else (None, "")
             if verdict is False:
-                out.log.append(f"{name}: recusada na verificação ({problems})")
+                self.log.append(f"{name}: recusada na verificação ({problems})")
                 continue
             reserva = " com a cena de reserva" if sc != scene else ""
-            out.log.append(f"{name}: ok{reserva}" + (" (sem verificação)" if verdict is None else ""))
-            if slot == 0:
-                out.cover = im
-            else:
-                out.points[slot - 1] = im
-            break
+            self.log.append(f"{name}: ok{reserva}" + (" (sem verificação)" if verdict is None else ""))
+            return im
+        return None
+
+
+def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any], env: Mapping[str, str],
+                model: str | None = None, post: Callable = requests.post, llm: Callable = generate_json,
+                cover: Image.Image | None = None) -> SlideImages:
+    """Imagens do carrossel. Com `cover` (ex.: a imagem do artigo no site), a capa não é gerada de novo."""
+    cfg = settings(editorial)
+    model = model or cfg["model"]
+    out = SlideImages(model=model, points=[None] * n_points, cover=cover)
+    if cfg["slides"] == "cover":
+        n_points = 0
+    out.scenes, out.brief = visual_brief(article, n_points, editorial.get("llm") or {}, env, llm=llm)
+    reserve = fallback_scenes(article, n_points)
+    run = _Run(cfg, env, model, article.get("slug", ""), post, llm, out.log)
+    run.llm_cfg = editorial.get("llm") or {}
+    if cover is not None:
+        out.log.append("capa: usa a imagem do artigo no site")
+    for slot, scene in enumerate(out.scenes):
+        if slot == 0 and cover is not None:
+            continue
+        im = run.slot(slot, "capa" if slot == 0 else f"ponto {slot}", scene, reserve[slot])
+        if slot == 0:
+            out.cover = im
+        else:
+            out.points[slot - 1] = im
     # Para o carrossel não misturar diapositivos com e sem imagem: um ponto sem imagem reaproveita outra já aprovada.
     # Capa sem imagem: usa a primeira imagem aprovada dos pontos (a capa nunca fica tipográfica entre imagens).
     if out.cover is None and cfg["slides"] != "cover":
@@ -276,3 +296,37 @@ def make_images(article: dict[str, Any], n_points: int, editorial: dict[str, Any
                 out.log.append(f"ponto {i + 1}: sem imagem própria, reaproveita a imagem da capa"
                                if out.cover is not None else f"ponto {i + 1}: reaproveita outra imagem aprovada")
     return out
+
+
+# --- Imagem de topo das notícias do site --------------------------------------------------------------------------
+
+XMP_AI_PURE = ('<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+               '<rdf:Description rdf:about="" xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/">'
+               "<Iptc4xmpExt:DigitalSourceType>http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"
+               "</Iptc4xmpExt:DigitalSourceType></rdf:Description></rdf:RDF></x:xmpmeta>").encode()
+
+
+def article_images_enabled(editorial: dict[str, Any], env: Mapping[str, str]) -> bool:
+    site = editorial.get("article_images") or {}
+    return bool(site.get("enabled") and env.get("CF_ACCOUNT_ID") and env.get("CF_API_TOKEN"))
+
+
+def make_article_image(article: dict[str, Any], editorial: dict[str, Any], env: Mapping[str, str],
+                       post: Callable = requests.post, llm: Callable = generate_json) -> tuple[Image.Image | None, list[str]]:
+    """Uma imagem do tema para o topo da notícia (mesmo modelo, cenas e verificação do Instagram)."""
+    cfg = {**settings(editorial), **(editorial.get("article_images") or {})}
+    cfg["max_generations"] = int(cfg["max_attempts"]) + 1
+    log: list[str] = []
+    scenes, _ = visual_brief(article, 0, editorial.get("llm") or {}, env, llm=llm)
+    run = _Run(cfg, env, cfg["model"], article.get("slug", ""), post, llm, log)
+    run.llm_cfg = editorial.get("llm") or {}
+    im = run.slot(0, "imagem do artigo", scenes[0], fallback_scenes(article, 0)[0])
+    return im, log
+
+
+def save_article_image(im: Image.Image, path) -> None:
+    """JPEG quadrado (o site recorta a 16:9; o Instagram usa-o inteiro na capa), com metadados IPTC de IA."""
+    from pathlib import Path
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.convert("RGB").save(path, "JPEG", quality=86, optimize=True, progressive=True, xmp=XMP_AI_PURE)

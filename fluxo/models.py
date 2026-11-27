@@ -71,4 +71,5 @@ class Draft:
     score: float | None = None
     event_date: str | None = None
     chart: str | None = None      # caminho relativo de um gráfico gerado
+    image: str | None = None      # imagem de topo gerada por IA (caminho relativo a content/)
     slug: str = ""

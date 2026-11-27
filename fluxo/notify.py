@@ -113,6 +113,10 @@ def review_html(prs: Iterable[dict[str, Any]], today: date, links: dict[int, str
                 f'Por rever · pedido #{pr["number"]}{score}</p>'
                 f'<h2 style="margin:0 0 10px;font:bold 22px/1.25 {SERIF};color:{INK}">{escape(a["title"])}</h2>'
                 + (f'<p style="margin:0 0 14px;font-size:16px;line-height:1.5;color:{INK}">{escape(a["lead"])}</p>' if a.get("lead") else "")
+                + (f'<img src="{escape(a["image_url"])}" width="552" alt="Imagem gerada por IA para esta notícia" '
+                   f'style="display:block;width:100%;max-width:552px;height:auto;margin:0 0 4px;border:0">'
+                   f'<p style="margin:0 0 14px;font-size:12px;color:{MUTED}">Imagem gerada por IA, publicada com a notícia '
+                   f'(no site e na capa do Instagram).</p>' if a.get("image_url") else "")
                 + actions
                 + (f'<div style="background:{PANEL};border-left:3px solid {AMBER};padding:10px 14px;margin:0 0 16px">'
                    f'<p style="margin:0 0 4px;font-weight:bold;font-size:14px;color:{INK}">Pontos-chave</p>'
