@@ -33,6 +33,7 @@ def front_matter(draft: Draft, when: datetime) -> dict[str, Any]:
         "ai": draft.ai,
         "score": draft.score,
         "chart": draft.chart,
+        "image": draft.image,
     }
 
 

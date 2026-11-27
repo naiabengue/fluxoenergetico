@@ -97,10 +97,9 @@ function emailRevisao() {
   dispatch_('email-revisao.yml', { teste: 'false' });
 }
 
-/** Carrossel do Instagram à terça e à sexta. */
+/** Carrossel do Instagram: lançado todos os dias; os dias com carrossel decidem-se no GitHub (instagram.weekdays). */
 function instagram() {
-  const d = weekday_();
-  if (d === 2 || d === 5) dispatch_('instagram.yml', {});
+  dispatch_('instagram.yml', {});
 }
 
 // ── Aprovação pelo email ──────────────────────────────────────────────────────────────────────────────────

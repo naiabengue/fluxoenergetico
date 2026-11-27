@@ -101,6 +101,7 @@ def build_site(cfg: Config, out: Path) -> dict[str, Any]:
         a["abs_url"] = base + a["url"][len(prefix):]
         a["category_name"] = cats.get(a.get("category"), {}).get("name", a.get("category", ""))
         a["html"] = _render_md(a.get("body", ""))
+        a["image_url"] = f"{base}/{a['image']}" if a.get("image") else ""
         ai = a.get("ai") or {}
         a["ai_note"] = (policy["ai_label_reviewed"] if ai.get("review") == "pr" else policy["ai_label"]) \
             if ai.get("used") else ""

@@ -134,9 +134,13 @@ def fetch_articles(prs: list[dict[str, Any]], repo: str, headers: dict[str, str]
                              headers=raw, timeout=30)
                 r.raise_for_status()
                 meta, body = split(r.text)
+                image = str(meta.get("image") or "")
                 items.append({"path": path, "title": str(meta.get("title", "")), "lead": str(meta.get("lead", "")),
                               "key_points": [str(p) for p in meta.get("key_points") or []], "body": body,
-                              "sources": meta.get("sources") or [], "score": meta.get("score")})
+                              "sources": meta.get("sources") or [], "score": meta.get("score"),
+                              # repositório público: a imagem do ramo de revisão abre no email sem credenciais
+                              "image_url": f"https://raw.githubusercontent.com/{repo}/{pr['head']['sha']}/content/{image}"
+                              if image else ""})
             out[pr["number"]] = items
         except (requests.RequestException, Refused, yaml.YAMLError, KeyError) as e:
             print(f"::warning::Pedido #{pr['number']}: texto não incluído no email ({e})")

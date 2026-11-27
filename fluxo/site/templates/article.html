@@ -3,6 +3,9 @@
 {% block description %}{{ a.lead }}{% endblock %}
 {% block head %}
 <meta property="og:type" content="article">
+{% if a.image_url %}<meta property="og:image" content="{{ a.image_url }}">
+<meta property="og:image:alt" content="Ilustração gerada por inteligência artificial sobre: {{ a.title }}">
+<meta name="twitter:card" content="summary_large_image">{% endif %}
 <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "NewsArticle", "headline": a.title, "description": a.lead, "datePublished": a.datetime or a.date, "inLanguage": "pt-PT", "mainEntityOfPage": a.abs_url, "articleSection": a.category_name, "isBasedOn": a.sources|map(attribute='url')|list, "publisher": {"@type": "Organization", "name": site.title}}|tojson(indent=1) }}</script>
 {% endblock %}
 {% block content %}
@@ -12,6 +15,7 @@
     <h1 class="article-title">{{ a.title }}</h1>
     <p class="article-lead">{{ a.lead }}</p>
   </header>
+  {% if a.image %}<figure class="hero"><img src="{{ prefix }}/{{ a.image }}" alt="Ilustração sobre: {{ a.title }}" width="1024" height="1024" fetchpriority="high"><figcaption>Imagem gerada por inteligência artificial (ilustração, não é uma fotografia).</figcaption></figure>{% endif %}
   {% if a.ai_note %}<p class="notice notice-ai">{{ a.ai_note }} Os números foram verificados automaticamente contra a fonte.</p>{% endif %}
   {% if a.type == 'dados' %}<p class="notice notice-data">Peça gerada automaticamente a partir de dados oficiais, sem inteligência artificial. Cada valor vem da fonte indicada no fim.</p>{% endif %}
   {% if a.key_points %}<section class="keypoints" aria-label="Pontos-chave"><h2>Em resumo</h2><ul>{% for k in a.key_points %}<li>{{ k }}</li>{% endfor %}</ul></section>{% endif %}

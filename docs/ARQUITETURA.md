@@ -17,6 +17,7 @@ Um só fornecedor (GitHub), um só idioma (Python), dados em ficheiros de texto 
 | Revisão humana | pull request diário `revisao/AAAA-MM-DD` | ramo do pull request |
 | Site | `fluxo/site/build.py` + Jinja2 → GitHub Pages (`publicar.yml`) | `_site/` (gerado, não versionado) |
 | Instagram | `fluxo/instagram` (seleção, legenda, imagens IA por tema em `images.py`, carrossel JPEG, API) | `content/instagram/`, `data/state/instagram.json` |
+| Imagem de topo das notícias | `fluxo/pipeline.py` (`_article_image`) com `fluxo/instagram/images.py` | `content/media/AAAAMMDD-<slug>.jpg`, campo `image` do artigo |
 | Monitorização | `data/runs/AAAA-MM.jsonl`, `docs/ESTADO.md`, `docs/ESTADO-FONTES.md`, avisos (issues) | repositório |
 
 ## Regras que o código garante

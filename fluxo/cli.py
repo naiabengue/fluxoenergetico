@@ -33,6 +33,8 @@ def format_summary(summary: dict) -> list[str]:
         lines.append(f"Para revisão ({r['kind']}): {r['title']}")
     for r in summary["rejected"]:
         lines.append(f"Rejeitado ({r['kind']}): {r['title']} — {'; '.join(r.get('errors', [])) or 'sem motivo'}")
+    for e in summary.get("image_log", []):
+        lines.append(f"Imagem: {e}")
     for e in dict.fromkeys(llm_info.get("errors", [])):
         lines.append(f"IA: {e}")
     for e in summary["errors"]:
@@ -99,7 +101,13 @@ def _build_carousel(cfg, a, out_dir: Path, model: str | None = None) -> tuple[li
     chart = cfg.root / "content" / a["chart"] if a.get("type") == "dados" and a.get("chart") else None
     chart = chart if chart and chart.is_file() else None
     n_points = len(carousel_points(a, ig.get("max_slides", 7), chart=chart is not None))
-    imgs = make_images(a, n_points, cfg.editorial, os.environ, model=model) \
+    cover = None
+    hero = cfg.root / "content" / a["image"] if a.get("image") else None
+    if hero is not None and hero.is_file():      # a imagem do artigo no site serve de capa (já foi verificada)
+        from PIL import Image
+        with Image.open(hero) as im:
+            cover = im.convert("RGB")
+    imgs = make_images(a, n_points, cfg.editorial, os.environ, model=model, cover=cover) \
         if images_enabled(cfg.editorial, os.environ) else None
     paths = render_carousel(a, out_dir, ig.get("max_slides", 7), base.replace("https://", ""),
                             cover_image=imgs.cover if imgs else None, style=ig,
@@ -113,11 +121,28 @@ def _build_carousel(cfg, a, out_dir: Path, model: str | None = None) -> tuple[li
     return paths, caption, info
 
 
+def instagram_due(editorial: dict, today) -> tuple[bool, str]:
+    """Há carrossel hoje? Dia da semana em instagram.weekdays (0 = segunda) e, nos dias úteis, sem feriados."""
+    from .calendar_pt import is_business_day
+
+    days = editorial["instagram"].get("weekdays", [0, 1, 2, 3, 4])
+    if today.weekday() not in days:
+        return False, "dia sem carrossel (instagram.weekdays)"
+    if set(days) <= {0, 1, 2, 3, 4} and not is_business_day(today):
+        return False, "feriado em Lisboa"
+    return True, ""
+
+
 def cmd_instagram(args) -> int:
+    from .calendar_pt import lisbon_date
     from .instagram.select import pick_for_week
     from .store import Store
 
     cfg = load_config(args.root)
+    due, why = instagram_due(cfg.editorial, lisbon_date(_now()))
+    if not due and not args.force:
+        print(f"Hoje não há carrossel: {why}. Para publicar na mesma, usar --force (caixa «forçar» no workflow).")
+        return 0
     store = Store(cfg.root)
     state = store.instagram_state()
     picks = pick_for_week(store.published_articles(), _now(), n=1, already_posted=set(state))
@@ -388,7 +413,8 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--out", default="_site")
     b.add_argument("--subdir", default="", help="gerar em <out>/<subdir> com redirecionamento na raiz (ex.: news)")
     add("audit", cmd_audit, "testar todas as fontes")
-    add("instagram", cmd_instagram, "preparar o carrossel da semana")
+    ig = add("instagram", cmd_instagram, "preparar o carrossel do dia (dias em instagram.weekdays)")
+    ig.add_argument("--force", action="store_true", help="preparar mesmo num dia sem carrossel (instagram.weekdays)")
     pv = add("instagram-preview", cmd_instagram_preview,
              "gerar um carrossel de teste noutra pasta (não publica nem mexe no estado)")
     pv.add_argument("--slug", default="", help="artigo; vazio = o melhor dos últimos 30 dias")
