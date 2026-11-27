@@ -88,6 +88,21 @@ def _paragraph(d, text, font, y, fill, width=W - 2 * MARGIN, spacing=1.3) -> int
     return y
 
 
+def _fit_paragraph(d, text: str, top: int, bottom: int, fill, sizes=(36, 33, 30, 28)) -> int:
+    """Escreve o parágrafo inteiro com a maior letra que cabe entre top e bottom; se nem com a menor couber,
+    corta no fim de uma palavra e acaba com «…» (nunca a meio de uma palavra)."""
+    for size in sizes:
+        font = _font(False, False, size)
+        lines = _wrap(d, text, font, W - 2 * MARGIN)
+        if top + len(lines) * int(size * 1.3) <= bottom:
+            return _paragraph(d, text, font, top, fill)
+    room = max(1, (bottom - top) // int(font.size * 1.3))
+    words = text.split()
+    while words and len(_wrap(d, " ".join(words) + "…", font, W - 2 * MARGIN)) > room:
+        words.pop()
+    return _paragraph(d, " ".join(words).rstrip(",;:") + "…", font, top, fill)
+
+
 def carousel_points(article: dict[str, Any], max_slides: int = 7, chart: bool = False) -> list[str]:
     """Pontos-chave que cabem no carrossel: capa + [gráfico] + pontos + apelo final ≤ max_slides."""
     return article.get("key_points", [])[: max(1, max_slides - 2 - int(chart))]
@@ -165,7 +180,7 @@ def render_carousel(article: dict[str, Any], out_dir: Path, max_slides: int = 7,
     d.text((MARGIN, y), article.get("category_name", ""), font=_font(False, True, 34), fill=AMBER if dark else TEAL)
     y = _paragraph(d, article["title"], _font(True, True, 74), y + 80, WHITE if dark else INK, spacing=1.18)
     d.rectangle([MARGIN, y + 40, MARGIN + 120, y + 48], fill=AMBER)
-    _paragraph(d, article.get("lead", "")[:260], _font(False, False, 36), y + 90, LIGHT if dark else TEXT)
+    _fit_paragraph(d, article.get("lead", ""), y + 90, H - 250, LIGHT if dark else TEXT)
     hint_font = _font(False, True, 34)
     d.text((W - MARGIN, H - 200), style["cover_hint"], font=hint_font, fill=AMBER if dark else TEAL, anchor="ra")
     if dark:

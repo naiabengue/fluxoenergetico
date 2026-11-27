@@ -300,3 +300,20 @@ def test_cover_without_image_uses_first_point_image(project):
     llm, _ = fake_llm(verdicts=[no, no, no])          # capa recusada nas 3 tentativas; pontos aprovados
     out = make_images(ART, 4, editorial(project, max_attempts=2), ENV, post=ok_post(calls), llm=llm)
     assert out.cover is not None and out.cover is out.points[0] and out.count == 5
+
+
+def test_cover_lead_is_never_cut_mid_word(tmp_path, monkeypatch):
+    import fluxo.instagram.render as render
+    written = []
+    real = render._paragraph
+    monkeypatch.setattr(render, "_paragraph", lambda d, text, *a, **k: written.append(text) or real(d, text, *a, **k))
+    lead = ("A Administração de Informação Energética dos EUA utiliza unidades térmicas britânicas para converter "
+            "diversas fontes de energia numa métrica comum, permitindo comparar a produção e o consumo de recursos "
+            "tão distintos como o carvão, o gás natural e as renováveis. ") * 3
+    render_carousel(dict(ART, lead=lead), tmp_path, 7, "x")
+    shown = next(t for t in written if t.startswith("A Administração"))
+    assert shown.endswith("…") and shown[:-1].split()[-1] in lead.split()   # acaba numa palavra inteira
+    short = "A produção renovável atingiu 65,0% em outubro."
+    written.clear()
+    render_carousel(dict(ART, lead=short), tmp_path / "b", 7, "x")
+    assert short in written                                               # entrada curta: inteira, sem «…»
